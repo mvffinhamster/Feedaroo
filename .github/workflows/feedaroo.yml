@@ -1,13 +1,14 @@
 name: Feedaroo 🦘
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"   # 15 percenként (UTC)
+  workflow_dispatch:
 
 jobs:
   run-feedaroo:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: 📦 Kód letöltése
@@ -16,18 +17,39 @@ jobs:
       - name: 🐍 Python beállítása
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+
+      # ⬇️ Dupe-védelem: a már elküldött cikkek cache-ben
+      - name: ♻️ sent DB visszaállítás
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: sent_feedaroo.json
+          key: feedaroo-sent-db-${{ github.run_id }}
+          restore-keys: |
+            feedaroo-sent-db-
 
       - name: 📚 Könyvtárak telepítése
-        run: |
-          pip install feedparser requests
+        run: pip install feedparser requests
 
-      - name: 🚀 Feedaroo futtatása
+      - name: 🚀 Feedaroo futtatása (egykörös)
         env:
           WEBHOOK: ${{ secrets.WEBHOOK }}
-          FEEDS: ${{ secrets.FEEDS }}
-          KEYWORDS: ${{ secrets.KEYWORDS }}
+          FEEDS: ${{ secrets.FEEDS }}                 # JSON lista
+          KEYWORDS: ${{ secrets.KEYWORDS }}           # JSON lista vagy üres
           CHECK_INTERVAL_MINUTES: ${{ secrets.CHECK_INTERVAL_MINUTES }}
           BOT_NAME: ${{ secrets.BOT_NAME }}
+          SENT_DB: sent_feedaroo.json
         run: |
-          python main.py
+          # a script végtelen loopos, ezért háttérbe tesszük és leállítjuk 20 mp után
+          python main.py &
+          PID=$!
+          sleep 20
+          kill $PID || true
+
+      - name: 💾 sent DB mentése cache-be
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: sent_feedaroo.json
+          key: feedaroo-sent-db-${{ github.run_id }}
