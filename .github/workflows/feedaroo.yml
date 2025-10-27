@@ -13,7 +13,6 @@ jobs:
   run-feedaroo:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
     steps:
       - name: 🗓️ Trigger info
         run: |
