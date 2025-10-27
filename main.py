@@ -1,0 +1,158 @@
+# pip install feedparser requests
+import feedparser, requests, time, hashlib, json, os, re
+
+# ============ env.json / env vars ============
+def load_env():
+    try:
+        with open("env.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            for k, v in data.items():
+                if isinstance(v, (list, dict)):
+                    os.environ[k] = json.dumps(v)
+                else:
+                    os.environ[k] = str(v)
+            print("✅ env.json loaded for Feedaroo.")
+    except Exception as e:
+        print("ℹ️ No/invalid env.json, falling back to OS env vars.", e)
+
+load_env()
+
+def get_list_env(name, default=None):
+    raw = os.getenv(name)
+    if not raw:
+        return default or []
+    try:
+        return json.loads(raw) if raw.strip().startswith("[") else [s.strip() for s in raw.split(",") if s.strip()]
+    except Exception:
+        return default or []
+
+WEBHOOK        = os.getenv("WEBHOOK", "").strip()
+FEEDS          = get_list_env("FEEDS", [])
+KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]  # csak TITLE-ben keresünk
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
+BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
+SENT_DB        = os.getenv("SENT_DB", "sent_feedaroo.json")
+
+USER_AGENT = {"User-Agent": "Feedaroo/1.1 (+discord)"}
+EMBED_COLOR = 0xFF9900  # narancs Aussie vibe
+
+SOURCE_EMOJIS = {
+    "motorsport.com": "🟡",
+    "speedcafe.com": "🟢",
+    "news.com.au": "🔵"
+}
+
+# --- helpers ---
+def load_sent():
+    try:
+        with open(SENT_DB, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+def save_sent(s):
+    try:
+        with open(SENT_DB, "w", encoding="utf-8") as f:
+            json.dump(list(s), f)
+    except Exception:
+        pass
+
+def uid(entry):
+    base = getattr(entry, "id", "") or (getattr(entry, "link", "") + getattr(entry, "title", ""))
+    return hashlib.sha256(base.encode("utf-8", "ignore")).hexdigest()
+
+def match_title(title: str) -> bool:
+    if not KEYWORDS:
+        return True  # ha nincs kulcsszó, minden mehet
+    t = (title or "").lower()
+    return any(k in t for k in KEYWORDS)
+
+def extract_image(entry):
+    if hasattr(entry, "media_content"):
+        for m in entry.media_content:
+            if m.get("url", "").startswith("http"):
+                return m["url"]
+    if hasattr(entry, "media_thumbnail"):
+        for m in entry.media_thumbnail:
+            if m.get("url", "").startswith("http"):
+                return m["url"]
+    if hasattr(entry, "links"):
+        for l in entry.links:
+            if getattr(l, "rel", "") == "enclosure" and str(getattr(l, "type", "")).startswith("image"):
+                if getattr(l, "href", "").startswith("http"):
+                    return l.href
+    html = getattr(entry, "summary", "") or getattr(entry, "description", "")
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', html or "", flags=re.I)
+    if m:
+        return m.group(1)
+    return None
+
+def clean_desc(text):
+    text = re.sub("<[^<]+?>", "", text or "")
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > 300:
+        text = text[:300].rsplit(" ", 1)[0] + "..."
+    return text
+
+def find_source_emoji(url):
+    for key, emoji in SOURCE_EMOJIS.items():
+        if key in url:
+            return emoji
+    return "🦘"
+
+def send(title, link, desc=None, img=None, emoji="🦘"):
+    embed = {
+        "title": f"{emoji} {title}",
+        "url": link,
+        "color": EMBED_COLOR
+    }
+    if desc:
+        embed["description"] = clean_desc(desc)
+    if img:
+        embed["image"] = {"url": img}
+    data = {"username": BOT_NAME, "embeds": [embed]}
+    if not WEBHOOK:
+        print("⚠️ No WEBHOOK set, printing instead:\n", data)
+        return
+    try:
+        requests.post(WEBHOOK, json=data, timeout=10)
+    except Exception as e:
+        print("Webhook error:", e)
+
+# --- main ---
+def loop():
+    sent = load_sent()
+    if not FEEDS:
+        print("⚠️ FEEDS is empty. Add feeds in env.json → 'FEEDS': [ ... ]")
+    while True:
+        new = 0
+        for url in FEEDS:
+            try:
+                feed = feedparser.parse(url, request_headers=USER_AGENT)
+                emoji = find_source_emoji(url)
+                for e in feed.entries:
+                    title = getattr(e, "title", "") or ""
+                    link = getattr(e, "link", "") or ""
+                    if not title or not link:
+                        continue
+                    if not match_title(title):
+                        continue
+                    u = uid(e)
+                    if u in sent:
+                        continue
+                    desc = getattr(e, "summary", "") or getattr(e, "description", "")
+                    img = extract_image(e)
+                    send(title, link, desc, img, emoji)
+                    sent.add(u)
+                    new += 1
+            except Exception as ex:
+                print(f"Error fetching {url}: {ex}")
+        if new:
+            save_sent(sent)
+            print(f"{BOT_NAME}: {new} new biased post(s) 🦘")
+        else:
+            print(f"{BOT_NAME}: nothing new")
+        time.sleep(CHECK_INTERVAL)
+
+if __name__ == "__main__":
+    loop()
