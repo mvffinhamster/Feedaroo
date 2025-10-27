@@ -30,4 +30,4 @@ jobs:
           CHECK_INTERVAL_MINUTES: ${{ secrets.CHECK_INTERVAL_MINUTES }}
           BOT_NAME: ${{ secrets.BOT_NAME }}
         run: |
-          python feedaroo.py
+          python main.py
