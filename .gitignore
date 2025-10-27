@@ -1,0 +1,4 @@
+env.json
+*.env
+__pycache__/
+sent_*.json
