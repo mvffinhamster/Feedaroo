@@ -1,5 +1,6 @@
-# pip install feedparser requests
+# pip install feedparser requests textblob
 import feedparser, requests, time, hashlib, json, os, re
+from textblob import TextBlob
 
 # ============ env.json / env vars ============
 def load_env():
@@ -28,18 +29,24 @@ def get_list_env(name, default=None):
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
 FEEDS          = get_list_env("FEEDS", [])
-KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]  # csak TITLE-ben keresünk
+KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]  # címben keres
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
 BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
 SENT_DB        = os.getenv("SENT_DB", "sent_feedaroo.json")
+POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))  # érzet küszöb
 
-USER_AGENT = {"User-Agent": "Feedaroo/1.1 (+discord)"}
+USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+discord)"}
 EMBED_COLOR = 0xFF9900  # narancs Aussie vibe
 
+# forrás → emoji (kibővítve AU packkal)
 SOURCE_EMOJIS = {
-    "motorsport.com": "🟡",
     "speedcafe.com": "🟢",
-    "news.com.au": "🔵"
+    "motorsport.com": "🟡",
+    "news.com.au": "🔵",
+    "foxsports.com.au": "🔴",
+    "abc.net.au": "⚪️",
+    "theage.com.au": "🟣",
+    "smh.com.au": "⚫️"
 }
 
 # --- helpers ---
@@ -63,7 +70,7 @@ def uid(entry):
 
 def match_title(title: str) -> bool:
     if not KEYWORDS:
-        return True  # ha nincs kulcsszó, minden mehet
+        return True
     t = (title or "").lower()
     return any(k in t for k in KEYWORDS)
 
@@ -100,16 +107,20 @@ def find_source_emoji(url):
             return emoji
     return "🦘"
 
+# --- sentiment analysis ---
+def is_positive(text: str, threshold: float) -> bool:
+    if not text:
+        return False
+    try:
+        pol = TextBlob(text).sentiment.polarity  # -1..+1
+        return pol >= threshold
+    except Exception:
+        return False
+
 def send(title, link, desc=None, img=None, emoji="🦘"):
-    embed = {
-        "title": f"{emoji} {title}",
-        "url": link,
-        "color": EMBED_COLOR
-    }
-    if desc:
-        embed["description"] = clean_desc(desc)
-    if img:
-        embed["image"] = {"url": img}
+    embed = {"title": f"{emoji} {title}", "url": link, "color": EMBED_COLOR}
+    if desc: embed["description"] = clean_desc(desc)
+    if img:  embed["image"] = {"url": img}
     data = {"username": BOT_NAME, "embeds": [embed]}
     if not WEBHOOK:
         print("⚠️ No WEBHOOK set, printing instead:\n", data)
@@ -123,7 +134,7 @@ def send(title, link, desc=None, img=None, emoji="🦘"):
 def loop():
     sent = load_sent()
     if not FEEDS:
-        print("⚠️ FEEDS is empty. Add feeds in env.json → 'FEEDS': [ ... ]")
+        print("⚠️ FEEDS is empty. Add feeds in env.json / Secrets.")
     while True:
         new = 0
         for url in FEEDS:
@@ -132,15 +143,22 @@ def loop():
                 emoji = find_source_emoji(url)
                 for e in feed.entries:
                     title = getattr(e, "title", "") or ""
-                    link = getattr(e, "link", "") or ""
+                    link  = getattr(e, "link", "") or ""
                     if not title or not link:
                         continue
                     if not match_title(title):
                         continue
+
+                    desc = getattr(e, "summary", "") or getattr(e, "description", "")
+
+                    # 💬 csak pozitív hangvételű cikk menjen át
+                    if not is_positive(desc or title, POS_THRESHOLD):
+                        continue
+
                     u = uid(e)
                     if u in sent:
                         continue
-                    desc = getattr(e, "summary", "") or getattr(e, "description", "")
+
                     img = extract_image(e)
                     send(title, link, desc, img, emoji)
                     sent.add(u)
@@ -149,7 +167,7 @@ def loop():
                 print(f"Error fetching {url}: {ex}")
         if new:
             save_sent(sent)
-            print(f"{BOT_NAME}: {new} new biased post(s) 🦘")
+            print(f"{BOT_NAME}: {new} new positive biased post(s) 🦘")
         else:
             print(f"{BOT_NAME}: nothing new")
         time.sleep(CHECK_INTERVAL)
