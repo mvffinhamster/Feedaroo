@@ -5,12 +5,21 @@ on:
     - cron: "*/15 * * * *"   # 15 percenként (UTC)
   workflow_dispatch:
 
+concurrency:
+  group: feedaroo
+  cancel-in-progress: true
+
 jobs:
   run-feedaroo:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
+      - name: 🗓️ Trigger info
+        run: |
+          echo "event: ${{ github.event_name }}"
+          echo "utc now: $(date -u '+%Y-%m-%d %H:%M:%S')"
+
       - name: 📦 Kód letöltése
         uses: actions/checkout@v4
 
@@ -19,7 +28,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ♻️ már posztolt cikk-UID-k cache-ből
       - name: 💾 sent DB visszaállítása
         id: cache-restore
         uses: actions/cache/restore@v4
@@ -35,13 +43,12 @@ jobs:
       - name: 🚀 Feedaroo futtatása (egykörös)
         env:
           WEBHOOK: ${{ secrets.WEBHOOK }}
-          FEEDS: ${{ secrets.FEEDS }}                 
-          KEYWORDS: ${{ secrets.KEYWORDS }}           
+          FEEDS: ${{ secrets.FEEDS }}
+          KEYWORDS: ${{ secrets.KEYWORDS }}
           CHECK_INTERVAL_MINUTES: ${{ secrets.CHECK_INTERVAL_MINUTES }}
           BOT_NAME: ${{ secrets.BOT_NAME }}
           SENT_DB: sent_feedaroo.json
           POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
-          # debug:
           DEBUG: "1"
           LOG_FILE: "feedaroo_debug.log"
         run: |
