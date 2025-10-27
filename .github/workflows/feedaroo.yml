@@ -1,0 +1,33 @@
+name: Feedaroo 🦘
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  run-feedaroo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: 🐍 Python beállítása
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📚 Könyvtárak telepítése
+        run: |
+          pip install feedparser requests
+
+      - name: 🚀 Feedaroo futtatása
+        env:
+          WEBHOOK: ${{ secrets.WEBHOOK }}
+          FEEDS: ${{ secrets.FEEDS }}
+          KEYWORDS: ${{ secrets.KEYWORDS }}
+          CHECK_INTERVAL_MINUTES: ${{ secrets.CHECK_INTERVAL_MINUTES }}
+          BOT_NAME: ${{ secrets.BOT_NAME }}
+        run: |
+          python feedaroo.py
