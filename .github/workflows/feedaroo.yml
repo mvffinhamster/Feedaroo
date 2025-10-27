@@ -19,8 +19,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ⬇️ Dupe-védelem: a már elküldött cikkek cache-ben
-      - name: ♻️ sent DB visszaállítás
+      # ♻️ már posztolt cikk-UID-k cache-ből
+      - name: 💾 sent DB visszaállítása
         id: cache-restore
         uses: actions/cache/restore@v4
         with:
@@ -30,18 +30,21 @@ jobs:
             feedaroo-sent-db-
 
       - name: 📚 Könyvtárak telepítése
-        run: pip install feedparser requests
+        run: pip install -r requirements.txt
 
       - name: 🚀 Feedaroo futtatása (egykörös)
         env:
           WEBHOOK: ${{ secrets.WEBHOOK }}
-          FEEDS: ${{ secrets.FEEDS }}                 # JSON lista
-          KEYWORDS: ${{ secrets.KEYWORDS }}           # JSON lista vagy üres
+          FEEDS: ${{ secrets.FEEDS }}                 
+          KEYWORDS: ${{ secrets.KEYWORDS }}           
           CHECK_INTERVAL_MINUTES: ${{ secrets.CHECK_INTERVAL_MINUTES }}
           BOT_NAME: ${{ secrets.BOT_NAME }}
           SENT_DB: sent_feedaroo.json
+          POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
+          # debug:
+          DEBUG: "1"
+          LOG_FILE: "feedaroo_debug.log"
         run: |
-          # a script végtelen loopos, ezért háttérbe tesszük és leállítjuk 20 mp után
           python main.py &
           PID=$!
           sleep 20
@@ -53,3 +56,11 @@ jobs:
         with:
           path: sent_feedaroo.json
           key: feedaroo-sent-db-${{ github.run_id }}
+
+      - name: 📎 Debug log feltöltése (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedaroo-debug-${{ github.run_number }}
+          path: feedaroo_debug.log
+          if-no-files-found: ignore
