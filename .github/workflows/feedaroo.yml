@@ -31,23 +31,28 @@ jobs:
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🚀 Run Feedaroo (single check)
-        env:
-          WEBHOOK: ${{ secrets.WEBHOOK }}
-          FEEDS: ${{ secrets.FEEDS }}
-          KEYWORDS: ${{ secrets.KEYWORDS }}
-          BOT_NAME: ${{ secrets.BOT_NAME }}
-          POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
-          SENT_DB: sent_feedaroo.json
-          DEBUG: "1"
-          LOG_FILE: feedaroo_debug.log
-        run: |
-          echo "Starting Feedaroo run..."
-          python main.py &
-          PID=$!
-          sleep 20
-          kill $PID || true
-          echo "Feedaroo run complete."
+  - name: 🚀 Run Feedaroo (single check)
+    env:
+      WEBHOOK: ${{ secrets.WEBHOOK }}
+      FEEDS: ${{ secrets.FEEDS }}
+      KEYWORDS: ${{ secrets.KEYWORDS }}
+      BOT_NAME: ${{ secrets.BOT_NAME }}
+      POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
+      SENT_DB: sent_feedaroo.json
+      DEBUG: "1"
+      LOG_FILE: feedaroo_debug.log
+
+      NEGATIVE_HINTS: ${{ secrets.NEGATIVE_HINTS }}
+      SLANDER_HINTS: ${{ secrets.SLANDER_HINTS }}
+      MCLAREN_TERMS: ${{ secrets.MCLAREN_TERMS }}
+
+    run: |
+      echo "Starting Feedaroo run..."
+      python main.py &
+      PID=$!
+      sleep 20
+      kill $PID || true
+      echo "Feedaroo run complete."
 
       - name: 💾 Save sent database to artifact
         if: always()
