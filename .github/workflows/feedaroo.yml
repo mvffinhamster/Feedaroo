@@ -1,75 +1,67 @@
-name: Feedaroo 🦘
+name: 🦘 Feedaroo
 
 on:
-schedule:
-- cron: “*/15 * * * *”   # Every 15 minutes (UTC)
-workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"   # Every 15 minutes (UTC)
+  workflow_dispatch:
 
 concurrency:
-group: feedaroo
-cancel-in-progress: true
+  group: feedaroo
+  cancel-in-progress: true
 
 jobs:
-run-feedaroo:
-runs-on: ubuntu-latest
-timeout-minutes: 5
+  run-feedaroo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
 
-```
-steps:
-  - name: 🗓️ Trigger info
-    run: |
-      echo "Event: ${{ github.event_name }}"
-      echo "UTC now: $(date -u '+%Y-%m-%d %H:%M:%S')"
-  
-  - name: 📦 Checkout code
-    uses: actions/checkout@v4
-  
-  - name: 🐍 Setup Python
-    uses: actions/setup-python@v5
-    with:
-      python-version: "3.11"
-      cache: 'pip'
-  
-  - name: 💾 Restore sent database from cache
-    id: cache-restore
-    uses: actions/cache/restore@v4
-    with:
-      path: sent_feedaroo.json
-      key: feedaroo-sent-db-${{ github.run_id }}
-      restore-keys: |
-        feedaroo-sent-db-
-  
-  - name: 📚 Install dependencies
-    run: pip install -r requirements.txt
-  
-  - name: 🚀 Run Feedaroo (single check)
-    env:
-      WEBHOOK: ${{ secrets.WEBHOOK }}
-      FEEDS: ${{ secrets.FEEDS }}
-      KEYWORDS: ${{ secrets.KEYWORDS }}
-      BOT_NAME: ${{ secrets.BOT_NAME }}
-      SENT_DB: sent_feedaroo.json
-      POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
-      DEBUG: "1"
-      LOG_FILE: feedaroo_debug.log
-      RUN_ONCE: "1"
-    run: python main.py
-  
-  - name: 💾 Save sent database to cache
-    if: always()
-    uses: actions/cache/save@v4
-    with:
-      path: sent_feedaroo.json
-      key: feedaroo-sent-db-${{ github.run_id }}
-  
-  - name: 📎 Upload logs and database artifacts
-    if: always()
-    uses: actions/upload-artifact@v4
-    with:
-      name: feedaroo-artifacts-run-${{ github.run_number }}
-      path: |
-        feedaroo_debug.log
-        sent_feedaroo.json
-      if-no-files-found: warn
-      retention-days: 7
-```
+    steps:
+      - name: 🗓️ Trigger info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "UTC now: $(date -u '+%Y-%m-%d %H:%M:%S')"
+
+      - name: 📦 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📚 Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: 🚀 Run Feedaroo (single check)
+        env:
+          WEBHOOK: ${{ secrets.WEBHOOK }}
+          FEEDS: ${{ secrets.FEEDS }}
+          KEYWORDS: ${{ secrets.KEYWORDS }}
+          BOT_NAME: ${{ secrets.BOT_NAME }}
+          POS_THRESHOLD: ${{ secrets.POS_THRESHOLD }}
+          SENT_DB: sent_feedaroo.json
+          DEBUG: "1"
+          LOG_FILE: feedaroo_debug.log
+        run: |
+          echo "Starting Feedaroo run..."
+          python main.py &
+          PID=$!
+          sleep 20
+          kill $PID || true
+          echo "Feedaroo run complete."
+
+      - name: 💾 Save sent database to artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedaroo-sent-db-${{ github.run_number }}
+          path: sent_feedaroo.json
+          if-no-files-found: ignore
+
+      - name: 📎 Upload debug log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: feedaroo-debug-${{ github.run_number }}
+          path: feedaroo_debug.log
+          if-no-files-found: ignore
+          retention-days: 7
