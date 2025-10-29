@@ -60,12 +60,10 @@ jobs:
           NEGATIVE_HINTS:  ${{ secrets.NEGATIVE_HINTS }}
           SLANDER_HINTS:   ${{ secrets.SLANDER_HINTS }}
           MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
+          CHECK_INTERVAL_MINUTES: "999999"
         run: |
-          echo "Starting Feedaroo run..."
-          python main.py &
-          PID=$!
-          sleep 20
-          kill $PID || true
+          echo "Starting Feedaroo single check..."
+          timeout 240 python main.py || true
           echo "Feedaroo run complete."
       
       - name: 📊 Show final database stats
