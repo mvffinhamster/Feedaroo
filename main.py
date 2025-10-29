@@ -127,15 +127,33 @@ def is_positive(text: str, threshold: float) -> tuple[bool, float]:
         return False, 0.0
 
 def send(title, link, desc=None, img=None, emoji="🦘"):
-    embed = {"title": f"{emoji} {title}", "url": link, "color": EMBED_COLOR}
-    if desc: embed["description"] = clean_desc(desc)
-    if img:  embed["image"] = {"url": img}
+    clean_link = re.sub(r"\?.*", "", link)  # levágja a query-t (pl. ?utm_source)
+    desc_text = clean_desc(desc or "")
+    if desc_text:
+        desc_text += f"\n\n🔗 {clean_link}"
+    else:
+        desc_text = f"🔗 {clean_link}"
+
+    embed = {
+        "title": f"{emoji} {title}",
+        "url": link,
+        "description": desc_text,
+        "color": EMBED_COLOR
+    }
+
+    if img:
+        embed["image"] = {"url": img}
+
     data = {"username": BOT_NAME, "embeds": [embed]}
+
     if not WEBHOOK:
         print("⚠️ No WEBHOOK set, printing instead:\n", data)
         return
+
     try:
-        requests.post(WEBHOOK, json=data, timeout=10)
+        r = requests.post(WEBHOOK, json=data, timeout=10)
+        r.raise_for_status()
+        print(f"✅ Sent: {title[:60]}")
     except Exception as e:
         print("Webhook error:", e)
 
@@ -156,32 +174,46 @@ def loop():
             try:
                 feed = feedparser.parse(url, request_headers=USER_AGENT)
                 emoji = find_source_emoji(url)
-                for e in feed.entries:
-                    title = getattr(e, "title", "") or ""
-                    link  = getattr(e, "link", "") or ""
-                    if not title or not link:
-                        continue
-                    if not match_title(title):
-                        dbg(f"skip (keyword): '{title[:80]}'")
-                        continue
+                from urllib.parse import urlparse
 
-                    desc = getattr(e, "summary", "") or getattr(e, "description", "")
-                    ok, pol = is_positive(desc or title, POS_THRESHOLD)
-                    dbg(f"check: '{title[:80]}' → polarity={pol:.2f}")
-                    if not ok:
-                        dbg(f"❌ skipped (neg/neutral): '{title[:80]}'")
-                        continue
+def src_name(link):
+    try:
+        host = urlparse(link).netloc
+        return host.replace("www.", "")
+    except Exception:
+        return "unknown"
 
-                    u = uid(e)
-                    if u in sent:
-                        dbg(f"skip (dupe): '{title[:80]}'")
-                        continue
+...
 
-                    img = extract_image(e)
-                    send(title, link, desc, img, emoji)
-                    dbg(f"✅ posted: '{title[:80]}' [{emoji}] {link}")
-                    sent.add(u)
-                    new += 1
+for e in feed.entries:
+    title = getattr(e, "title", "") or ""
+    link  = getattr(e, "link", "") or ""
+    if not title or not link:
+        continue
+    src = src_name(link)
+
+    if not match_title(title):
+        dbg(f"#️⃣ [{src}] keyword skip: '{title[:80]}'")
+        continue
+
+    desc = getattr(e, "summary", "") or getattr(e, "description", "")
+    ok, pol = is_positive(desc or title, POS_THRESHOLD)
+    dbg(f"check [{src}]: '{title[:80]}' → polarity={pol:.2f}")
+
+    if not ok:
+        dbg(f"❌ [{src}] skipped (neg/neutral): '{title[:80]}'")
+        continue
+
+    u = uid(e)
+    if u in sent:
+        dbg(f"☑️ [{src}] dupe: '{title[:80]}'")
+        continue
+
+    img = extract_image(e)
+    send(title, link, desc, img, emoji)
+    dbg(f"✅ [{src}] posted: '{title[:80]}' [{emoji}] {link}")
+    sent.add(u)
+    new += 1
             except Exception as ex:
                 print(f"Error fetching {url}: {ex}")
                 dbg(f"error fetching {url}: {ex}")
