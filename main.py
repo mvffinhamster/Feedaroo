@@ -97,40 +97,82 @@ def load_sent():
             data = json.load(f)
             # allow legacy list format
             if isinstance(data, list):
-                return {uid: datetime.now().isoformat() for uid in data}
+                migrated = {uid_val: datetime.now().isoformat() for uid_val in data}
+                print(f"📦 Migrated {len(migrated)} entries from legacy format")
+                return migrated
+            print(f"📦 Loaded {len(data)} entries from {SENT_DB}")
             return data
-    except Exception:
+    except FileNotFoundError:
+        print(f"📦 No existing {SENT_DB}, starting fresh")
+        return {}
+    except Exception as e:
+        print(f"⚠️ Error loading {SENT_DB}: {e}, starting fresh")
         return {}
 
 def save_sent(sent):
     try:
         with open(SENT_DB, "w", encoding="utf-8") as f:
             json.dump(sent, f, indent=2)
+        print(f"💾 Saved {len(sent)} entries to {SENT_DB}")
+        dbg(f"Saved {len(sent)} entries to DB")
     except Exception as e:
         dbg(f"Failed to save sent DB: {e}")
+        print(f"❌ Failed to save sent DB: {e}")
 
 def cleanup_sent(sent: dict) -> dict:
     if not sent:
         return sent
     cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
     cleaned = {}
+    removed = 0
     for uid_, ts in sent.items():
         try:
             d = datetime.fromisoformat(ts)
             if d > cutoff:
                 cleaned[uid_] = ts
+            else:
+                removed += 1
         except Exception:
+            # Keep entries with bad timestamps
             cleaned[uid_] = datetime.now().isoformat()
+            dbg(f"Fixed bad timestamp for {uid_[:16]}...")
+    
+    if removed > 0:
+        print(f"🧹 Removed {removed} expired entries (older than {SENT_EXPIRY_DAYS} days)")
+    
     if len(cleaned) > MAX_SENT_ENTRIES:
+        before = len(cleaned)
         cleaned = dict(sorted(cleaned.items(), key=lambda x: x[1], reverse=True)[:MAX_SENT_ENTRIES])
+        print(f"🧹 Trimmed sent DB from {before} to {MAX_SENT_ENTRIES} entries")
         dbg(f"Trimmed sent DB to {MAX_SENT_ENTRIES}")
+    
     return cleaned
 
 # ============ Helpers ============
 
 def uid(entry):
-    base = getattr(entry, "id", "") or (getattr(entry, "link", "") + getattr(entry, "title", ""))
-    return hashlib.sha256(base.encode("utf-8", "ignore")).hexdigest()
+    """Generate unique ID based on link (most reliable) with fallback."""
+    link = getattr(entry, "link", "").strip()
+    
+    if link:
+        # Remove query parameters and fragments for consistent hashing
+        clean_link = re.sub(r"[?#].*", "", link)
+        entry_id = hashlib.sha256(clean_link.encode("utf-8", "ignore")).hexdigest()
+        dbg(f"Generated UID from link: {clean_link[:80]} -> {entry_id[:16]}...")
+        return entry_id
+    
+    # Fallback to entry.id if no link
+    entry_id_field = getattr(entry, "id", "").strip()
+    if entry_id_field:
+        entry_id = hashlib.sha256(entry_id_field.encode("utf-8", "ignore")).hexdigest()
+        dbg(f"Generated UID from entry.id: {entry_id_field[:80]} -> {entry_id[:16]}...")
+        return entry_id
+    
+    # Last resort: use title
+    title = getattr(entry, "title", "").strip()
+    entry_id = hashlib.sha256(title.encode("utf-8", "ignore")).hexdigest()
+    dbg(f"Generated UID from title: {title[:80]} -> {entry_id[:16]}...")
+    return entry_id
 
 def clean_desc(text):
     text = re.sub("<[^<]+?>", "", text or "")
@@ -234,7 +276,10 @@ def process_feed(url, sent):
         if getattr(feed, "bozo", 0):
             dbg(f"⚠️ Feed parse warning: {getattr(feed, 'bozo_exception', '')}")
 
-        for entry in getattr(feed, "entries", []):
+        entries = getattr(feed, "entries", [])
+        dbg(f"Found {len(entries)} entries in feed")
+
+        for entry in entries:
             title = (getattr(entry, "title", "") or "").strip()
             link  = (getattr(entry, "link", "") or "").strip()
             if not title or not link:
@@ -245,18 +290,22 @@ def process_feed(url, sent):
             emoji = find_source_emoji(link)
             desc  = getattr(entry, "summary", "") or getattr(entry, "description", "")
 
+            # Generate unique ID
+            entry_id = uid(entry)
+            
+            # Duplicate check FIRST (most important)
+            if entry_id in sent:
+                dbg(f"☑️ [{src}] DUPLICATE (already sent): '{title[:80]}' [ID: {entry_id[:16]}...]")
+                continue
+            
+            dbg(f"🆕 [{src}] NEW entry: '{title[:80]}' [ID: {entry_id[:16]}...]")
+
             # Classify
             flags = classify_article(title, desc)
 
-            # Duplicate check first (based on uid of the entry)
-            entry_id = uid(entry)
-            if entry_id in sent:
-                dbg(f"☑️ [{src}] Duplicate: '{title[:80]}'")
-                continue
-
             # Oscar-negative -> hard skip
             if flags["neg_oscar"]:
-                dbg(f"🚫 [{src}] oscar negative: '{title[:80]}'")
+                dbg(f"🚫 [{src}] Oscar negative: '{title[:80]}'")
                 continue
 
             # McLaren/Norris slander -> force post (no sentiment/keyword gating)
@@ -273,7 +322,7 @@ def process_feed(url, sent):
                 if ok:
                     sent[entry_id] = datetime.now().isoformat()
                     new_posts += 1
-                    dbg(f"😈 [{src}] slander posted: '{title[:80]}'")
+                    dbg(f"😈 [{src}] Slander posted: '{title[:80]}'")
                     time.sleep(DISCORD_RATE_LIMIT_DELAY)
                 continue
 
@@ -316,7 +365,9 @@ def loop():
     # init debug file per run
     if DEBUG:
         try:
-            open(LOG_FILE, "w", encoding="utf-8").close()
+            with open(LOG_FILE, "w", encoding="utf-8") as f:
+                f.write(f"=== Feedaroo Debug Log Started at {datetime.now().isoformat()} ===\n")
+            print(f"🐛 Debug mode enabled, logging to {LOG_FILE}")
         except Exception:
             pass
 
@@ -324,10 +375,12 @@ def loop():
     save_sent(sent)
 
     print(f"🦘 {BOT_NAME} started. Monitoring {len(FEEDS)} feeds.")
+    print(f"📊 Tracking {len(sent)} previously sent entries")
     dbg(f"Feeds={len(FEEDS)}, thr={POS_THRESHOLD}, keywords={KEYWORDS}, neg_hints={NEGATIVE_HINTS}, slander_hints={SLANDER_HINTS}")
 
     while True:
         total_new = 0
+        dbg(f"\n=== Starting feed check cycle at {datetime.now().isoformat()} ===")
         for feed_url in FEEDS:
             total_new += process_feed(feed_url, sent)
 
@@ -339,6 +392,7 @@ def loop():
             print(f"🦘 {BOT_NAME}: No new posts.")
             dbg("Round complete → 0 new")
 
+        print(f"💤 Sleeping for {CHECK_INTERVAL // 60} minutes...")
         time.sleep(CHECK_INTERVAL)
 
 # ============ Entry point ============
@@ -349,3 +403,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n🛑 Feedaroo stopped.")
         dbg("Stopped manually")
+    except Exception as e:
+        print(f"\n💥 Feedaroo crashed: {e}")
+        dbg(f"Crashed: {e}")
+        raise
