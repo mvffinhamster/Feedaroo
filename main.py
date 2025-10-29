@@ -1,4 +1,5 @@
 # pip install -r requirements.txt
+# Feedaroo — Piastri-positive news + McLaren slander detector
 
 import feedparser
 import requests
@@ -30,7 +31,7 @@ SOURCE_EMOJIS = {
     "smh.com.au": "⚫️"
 }
 
-# ============ Config ============
+# ============ Config / env ============
 
 def load_env():
     try:
@@ -57,15 +58,24 @@ def get_list_env(name, default=None):
 
 load_env()
 
-WEBHOOK = os.getenv("WEBHOOK", "").strip()
-FEEDS = get_list_env("FEEDS", [])
-KEYWORDS = [k.lower() for k in get_list_env("KEYWORDS", [])]
+# Core config
+WEBHOOK        = os.getenv("WEBHOOK", "").strip()
+FEEDS          = get_list_env("FEEDS", [])
+KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]           # Oscar filter (title)
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
-BOT_NAME = os.getenv("BOT_NAME", "Feedaroo 🦘")
-SENT_DB = os.getenv("SENT_DB", "sent_feedaroo.json")
-POS_THRESHOLD = float(os.getenv("POS_THRESHOLD", "0.15"))
-DEBUG = os.getenv("DEBUG", "0") == "1"
-LOG_FILE = os.getenv("LOG_FILE", "feedaroo_debug.log")
+BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
+SENT_DB        = os.getenv("SENT_DB", "sent_feedaroo.json")
+POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
+DEBUG          = os.getenv("DEBUG", "0") == "1"
+LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
+
+# New classification hints (configurable via Secrets / env.json)
+NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
+SLANDER_HINTS  = [s.lower() for s in get_list_env("SLANDER_HINTS", [])]
+MCLAREN_TERMS  = [s.lower() for s in get_list_env("MCLAREN_TERMS", ["mclaren","norris","lando norris","stella","zak brown","woking"])]
+
+# Oscar terms (fallback if KEYWORDS is empty)
+OSCAR_TERMS = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri"]
 
 # ============ Debug log ============
 
@@ -85,6 +95,7 @@ def load_sent():
     try:
         with open(SENT_DB, "r", encoding="utf-8") as f:
             data = json.load(f)
+            # allow legacy list format
             if isinstance(data, list):
                 return {uid: datetime.now().isoformat() for uid in data}
             return data
@@ -97,6 +108,23 @@ def save_sent(sent):
             json.dump(sent, f, indent=2)
     except Exception as e:
         dbg(f"Failed to save sent DB: {e}")
+
+def cleanup_sent(sent: dict) -> dict:
+    if not sent:
+        return sent
+    cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
+    cleaned = {}
+    for uid_, ts in sent.items():
+        try:
+            d = datetime.fromisoformat(ts)
+            if d > cutoff:
+                cleaned[uid_] = ts
+        except Exception:
+            cleaned[uid_] = datetime.now().isoformat()
+    if len(cleaned) > MAX_SENT_ENTRIES:
+        cleaned = dict(sorted(cleaned.items(), key=lambda x: x[1], reverse=True)[:MAX_SENT_ENTRIES])
+        dbg(f"Trimmed sent DB to {MAX_SENT_ENTRIES}")
+    return cleaned
 
 # ============ Helpers ============
 
@@ -119,8 +147,9 @@ def get_source_name(link):
         return "unknown"
 
 def find_source_emoji(link):
+    link_l = (link or "").lower()
     for key, emoji in SOURCE_EMOJIS.items():
-        if key in link:
+        if key in link_l:
             return emoji
     return "🦘"
 
@@ -133,6 +162,27 @@ def is_positive(text, threshold):
     except Exception as e:
         dbg(f"Sentiment error: {e}")
         return False, 0.0
+
+def contains_any(blob: str, terms: list[str]) -> bool:
+    return any(t in blob for t in terms if t)
+
+def classify_article(title: str, desc: str) -> dict:
+    """
+    Returns flags:
+      - neg_oscar: negative Oscar-related (skip)
+      - slander: McLaren/Norris slander (post with ⚠️ regardless of positivity/keywords)
+    """
+    blob = f"{title} {desc}".lower()
+
+    neg_hit = contains_any(blob, NEGATIVE_HINTS) if NEGATIVE_HINTS else False
+    oscar_hit = contains_any(blob, OSCAR_TERMS)
+    slander_hit = contains_any(blob, SLANDER_HINTS) if SLANDER_HINTS else False
+    mclaren_hit = contains_any(blob, MCLAREN_TERMS)
+
+    neg_oscar = neg_hit and oscar_hit
+    slander = slander_hit and mclaren_hit
+
+    return {"neg_oscar": neg_oscar, "slander": slander}
 
 # ============ Discord send ============
 
@@ -181,42 +231,66 @@ def process_feed(url, sent):
     try:
         dbg(f"Fetching feed: {url}")
         feed = feedparser.parse(url, request_headers=USER_AGENT)
-        if feed.bozo:
-            dbg(f"⚠️ Feed parse warning: {feed.bozo_exception}")
+        if getattr(feed, "bozo", 0):
+            dbg(f"⚠️ Feed parse warning: {getattr(feed, 'bozo_exception', '')}")
 
-        for entry in feed.entries:
-            title = getattr(entry, "title", "").strip()
-            link = getattr(entry, "link", "").strip()
+        for entry in getattr(feed, "entries", []):
+            title = (getattr(entry, "title", "") or "").strip()
+            link  = (getattr(entry, "link", "") or "").strip()
             if not title or not link:
                 dbg("❌ Skipped entry with missing title/link")
                 continue
 
-            src = get_source_name(link)
+            src   = get_source_name(link)
             emoji = find_source_emoji(link)
+            desc  = getattr(entry, "summary", "") or getattr(entry, "description", "")
 
-            # Keyword check
-            if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
-                dbg(f"⏭️ [{src}] Skipped (no keyword): '{title[:80]}'")
-                continue
+            # Classify
+            flags = classify_article(title, desc)
 
-            # Sentiment check
-            desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
-            ok, pol = is_positive(desc or title, POS_THRESHOLD)
-            dbg(f"🔍 [{src}] '{title[:80]}' → polarity={pol:.2f} (threshold={POS_THRESHOLD})")
-
-            if not ok:
-                dbg(f"❌ [{src}] Skipped (negative/neutral): '{title[:80]}'")
-                continue
-            else:
-                dbg(f"✅ [{src}] Positive sentiment: '{title[:80]}'")
-
-            # Duplicate check
+            # Duplicate check first (based on uid of the entry)
             entry_id = uid(entry)
             if entry_id in sent:
                 dbg(f"☑️ [{src}] Duplicate: '{title[:80]}'")
                 continue
 
-            # Try image
+            # Oscar-negative -> hard skip
+            if flags["neg_oscar"]:
+                dbg(f"🚫 [{src}] oscar negative: '{title[:80]}'")
+                continue
+
+            # McLaren/Norris slander -> force post (no sentiment/keyword gating)
+            if flags["slander"]:
+                out_title = f"‼️ MCLAREN SLANDER ‼️ — {title}"
+                img = None
+                # try media_content for image (simple)
+                if hasattr(entry, "media_content"):
+                    for m in entry.media_content:
+                        if m.get("url", "").startswith("http"):
+                            img = m["url"]
+                            break
+                ok = send_to_discord(out_title, link, desc, img, emoji)
+                if ok:
+                    sent[entry_id] = datetime.now().isoformat()
+                    new_posts += 1
+                    dbg(f"😈 [{src}] slander posted: '{title[:80]}'")
+                    time.sleep(DISCORD_RATE_LIMIT_DELAY)
+                continue
+
+            # Normal path → must match KEYWORDS (title) + positive sentiment
+            if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+                dbg(f"⏭️ [{src}] Skipped (no keyword): '{title[:80]}'")
+                continue
+
+            ok_pol, pol = is_positive(desc or title, POS_THRESHOLD)
+            dbg(f"🔍 [{src}] '{title[:80]}' → polarity={pol:.2f} (thr={POS_THRESHOLD})")
+            if not ok_pol:
+                dbg(f"❌ [{src}] Skipped (negative/neutral): '{title[:80]}'")
+                continue
+            else:
+                dbg(f"✅ [{src}] Positive: '{title[:80]}'")
+
+            # Try simple image extraction from media_content
             img = None
             if hasattr(entry, "media_content"):
                 for m in entry.media_content:
@@ -224,7 +298,6 @@ def process_feed(url, sent):
                         img = m["url"]
                         break
 
-            # Send to Discord
             if send_to_discord(title, link, desc, img, emoji):
                 sent[entry_id] = datetime.now().isoformat()
                 new_posts += 1
@@ -240,15 +313,18 @@ def process_feed(url, sent):
 # ============ Main loop ============
 
 def loop():
+    # init debug file per run
     if DEBUG:
         try:
             open(LOG_FILE, "w", encoding="utf-8").close()
         except Exception:
             pass
 
-    sent = load_sent()
+    sent = cleanup_sent(load_sent())
+    save_sent(sent)
+
     print(f"🦘 {BOT_NAME} started. Monitoring {len(FEEDS)} feeds.")
-    dbg(f"Feeds: {len(FEEDS)}, threshold={POS_THRESHOLD}, keywords={KEYWORDS}")
+    dbg(f"Feeds={len(FEEDS)}, thr={POS_THRESHOLD}, keywords={KEYWORDS}, neg_hints={NEGATIVE_HINTS}, slander_hints={SLANDER_HINTS}")
 
     while True:
         total_new = 0
@@ -257,7 +333,7 @@ def loop():
 
         if total_new > 0:
             save_sent(sent)
-            print(f"🦘 {BOT_NAME}: {total_new} new positive posts!")
+            print(f"🦘 {BOT_NAME}: {total_new} new post(s)!")
             dbg(f"Round complete → {total_new} new")
         else:
             print(f"🦘 {BOT_NAME}: No new posts.")
