@@ -176,34 +176,47 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 # ============ Feed processing ============
 
 def process_feed(url, sent):
+    """Process a single feed and return count of new posts."""
     new_posts = 0
     try:
         dbg(f"Fetching feed: {url}")
         feed = feedparser.parse(url, request_headers=USER_AGENT)
+        if feed.bozo:
+            dbg(f"⚠️ Feed parse warning: {feed.bozo_exception}")
+
         for entry in feed.entries:
             title = getattr(entry, "title", "").strip()
             link = getattr(entry, "link", "").strip()
             if not title or not link:
+                dbg("❌ Skipped entry with missing title/link")
                 continue
+
             src = get_source_name(link)
             emoji = find_source_emoji(link)
 
-            if not any(k in title.lower() for k in KEYWORDS) and KEYWORDS:
-                dbg(f"#️⃣ [{src}] Keyword skip: {title[:80]}")
+            # Keyword check
+            if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+                dbg(f"⏭️ [{src}] Skipped (no keyword): '{title[:80]}'")
                 continue
 
+            # Sentiment check
             desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
             ok, pol = is_positive(desc or title, POS_THRESHOLD)
-            dbg(f"🔍 [{src}] {title[:80]} → polarity={pol:.2f}")
-            if not ok:
-                dbg(f"❌ [{src}] Neg/neutral: {title[:80]}")
-                continue
+            dbg(f"🔍 [{src}] '{title[:80]}' → polarity={pol:.2f} (threshold={POS_THRESHOLD})")
 
+            if not ok:
+                dbg(f"❌ [{src}] Skipped (negative/neutral): '{title[:80]}'")
+                continue
+            else:
+                dbg(f"✅ [{src}] Positive sentiment: '{title[:80]}'")
+
+            # Duplicate check
             entry_id = uid(entry)
             if entry_id in sent:
-                dbg(f"☑️ [{src}] Dupe: {title[:80]}")
+                dbg(f"☑️ [{src}] Duplicate: '{title[:80]}'")
                 continue
 
+            # Try image
             img = None
             if hasattr(entry, "media_content"):
                 for m in entry.media_content:
@@ -211,12 +224,17 @@ def process_feed(url, sent):
                         img = m["url"]
                         break
 
+            # Send to Discord
             if send_to_discord(title, link, desc, img, emoji):
                 sent[entry_id] = datetime.now().isoformat()
                 new_posts += 1
                 time.sleep(DISCORD_RATE_LIMIT_DELAY)
+
     except Exception as e:
-        dbg(f"Feed error {url}: {e}")
+        dbg(f"💥 Error processing feed {url}: {e}")
+        print(f"❌ Error processing feed {url}: {e}")
+
+    dbg(f"Round done for {url} → {new_posts} new post(s)")
     return new_posts
 
 # ============ Main loop ============
