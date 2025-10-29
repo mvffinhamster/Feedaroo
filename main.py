@@ -321,8 +321,9 @@ def process_feed(url, sent):
                 ok = send_to_discord(out_title, link, desc, img, emoji)
                 if ok:
                     sent[entry_id] = datetime.now().isoformat()
+                    save_sent(sent)  # Save immediately after each post
                     new_posts += 1
-                    dbg(f"😈 [{src}] Slander posted: '{title[:80]}'")
+                    dbg(f"😈 [{src}] Slander posted: '{title[:80]}' - DB saved")
                     time.sleep(DISCORD_RATE_LIMIT_DELAY)
                 continue
 
@@ -436,7 +437,12 @@ def loop():
 
 if __name__ == "__main__":
     try:
-        loop()
+        # Check if we should run in single-check mode (for cron/GitHub Actions)
+        # If CHECK_INTERVAL is very large, assume single-check mode
+        if CHECK_INTERVAL > 100000:
+            single_check()
+        else:
+            loop()
     except KeyboardInterrupt:
         print("\n🛑 Feedaroo stopped.")
         dbg("Stopped manually")
