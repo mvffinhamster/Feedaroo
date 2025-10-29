@@ -1,57 +1,47 @@
 name: 🦘 Feedaroo
+
 on:
   schedule:
-    - cron: "*/15 * * * *"   # Every 15 minutes (UTC)
+    - cron: "*/15 * * * *"   # 15 percenként (UTC)
   workflow_dispatch:
+
 concurrency:
   group: feedaroo
   cancel-in-progress: true
+
 jobs:
   run-feedaroo:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
+
     steps:
       - name: 🗓️ Trigger info
         run: |
           echo "Event: ${{ github.event_name }}"
           echo "UTC now: $(date -u '+%Y-%m-%d %H:%M:%S')"
-      
+
       - name: 📦 Checkout repo
         uses: actions/checkout@v4
-      
+
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      
+
+      # 💾 PERSISTENT MEMORY — mindig ugyanaz a kulcs!
+      - name: 💾 Restore sent DB from cache
+        id: cache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: sent_feedaroo.json
+          key: feedaroo-sent-db
+          restore-keys: |
+            feedaroo-sent-db
+
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
-      
-      - name: 📥 Download previous sent database
-        uses: dawidd6/action-download-artifact@v3
-        continue-on-error: true
-        with:
-          workflow: feedaroo.yml
-          name: feedaroo-sent-db
-          path: .
-          if_no_artifact_found: warn
-      
-      - name: 🔍 Check database status
-        run: |
-          if [ -f sent_feedaroo.json ]; then
-            echo "✅ Found existing database:"
-            ls -lh sent_feedaroo.json
-            ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
-            echo "📊 Database contains $ENTRIES entries"
-            echo "BEFORE_COUNT=$ENTRIES" >> $GITHUB_ENV
-            # Show a sample entry ID
-            jq -r 'keys[0]' sent_feedaroo.json 2>/dev/null | head -c 32 | xargs -I {} echo "Sample UID: {}..."
-          else
-            echo "ℹ️ No existing database found, starting fresh"
-            echo "BEFORE_COUNT=0" >> $GITHUB_ENV
-          fi
-      
-      - name: 🚀 Run Feedaroo (single check)
+
+      - name: 🚀 Run Feedaroo (single check window)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
           FEEDS:           ${{ secrets.FEEDS }}
@@ -64,44 +54,29 @@ jobs:
           NEGATIVE_HINTS:  ${{ secrets.NEGATIVE_HINTS }}
           SLANDER_HINTS:   ${{ secrets.SLANDER_HINTS }}
           MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
-          CHECK_INTERVAL_MINUTES: "999999"
+          CHECK_INTERVAL_MINUTES: "999999"   # hogy a loop ne pörögjön tovább
         run: |
           echo "Starting Feedaroo single check..."
+          # 4 perc futási ablak elég a parsereknek + postnak
           timeout 240 python main.py || true
           echo "Feedaroo run complete."
-      
-      - name: 📊 Show final database stats
+
+      # 💾 Friss állapot mentése UGYANAZZAL a kulccsal → tartós memória
+      - name: 💾 Save sent DB to cache
         if: always()
-        run: |
-          if [ -f sent_feedaroo.json ]; then
-            echo "📦 Final database:"
-            ls -lh sent_feedaroo.json
-            ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
-            echo "📊 Database contains $ENTRIES entries"
-            BEFORE=${BEFORE_COUNT:-0}
-            ADDED=$((ENTRIES - BEFORE))
-            echo "➕ Added $ADDED new entries this run"
-            # Show a sample entry ID from final state
-            jq -r 'keys[0]' sent_feedaroo.json 2>/dev/null | head -c 32 | xargs -I {} echo "Sample UID: {}..."
-          else
-            echo "⚠️ No database file found after run"
-          fi
-      
-      - name: 💾 Save sent database (persistent)
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/cache/save@v4
         with:
-          name: feedaroo-sent-db
           path: sent_feedaroo.json
-          if-no-files-found: ignore
-          retention-days: 90
-          overwrite: true
-      
-      - name: 📎 Upload debug log
+          key: feedaroo-sent-db
+
+      # 📎 Debug & DB artifact (ellenőrzéshez)
+      - name: 📎 Upload artifacts (debug log + DB)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: feedaroo-debug-${{ github.run_number }}
-          path: feedaroo_debug.log
+          name: feedaroo-artifacts-${{ github.run_number }}
+          path: |
+            feedaroo_debug.log
+            sent_feedaroo.json
           if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14
