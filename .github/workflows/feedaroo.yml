@@ -43,8 +43,12 @@ jobs:
             ls -lh sent_feedaroo.json
             ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
             echo "📊 Database contains $ENTRIES entries"
+            echo "BEFORE_COUNT=$ENTRIES" >> $GITHUB_ENV
+            # Show a sample entry ID
+            jq -r 'keys[0]' sent_feedaroo.json 2>/dev/null | head -c 32 | xargs -I {} echo "Sample UID: {}..."
           else
             echo "ℹ️ No existing database found, starting fresh"
+            echo "BEFORE_COUNT=0" >> $GITHUB_ENV
           fi
       
       - name: 🚀 Run Feedaroo (single check)
@@ -74,6 +78,11 @@ jobs:
             ls -lh sent_feedaroo.json
             ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
             echo "📊 Database contains $ENTRIES entries"
+            BEFORE=${BEFORE_COUNT:-0}
+            ADDED=$((ENTRIES - BEFORE))
+            echo "➕ Added $ADDED new entries this run"
+            # Show a sample entry ID from final state
+            jq -r 'keys[0]' sent_feedaroo.json 2>/dev/null | head -c 32 | xargs -I {} echo "Sample UID: {}..."
           else
             echo "⚠️ No database file found after run"
           fi
