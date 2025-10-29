@@ -361,7 +361,8 @@ def process_feed(url, sent):
 
 # ============ Main loop ============
 
-def loop():
+def single_check():
+    """Run a single check cycle and exit (for cron/GitHub Actions)."""
     # init debug file per run
     if DEBUG:
         try:
@@ -372,9 +373,43 @@ def loop():
             pass
 
     sent = cleanup_sent(load_sent())
-    save_sent(sent)
+    
+    print(f"🦘 {BOT_NAME} started (single check mode).")
+    print(f"📊 Tracking {len(sent)} previously sent entries")
+    dbg(f"Feeds={len(FEEDS)}, thr={POS_THRESHOLD}, keywords={KEYWORDS}, neg_hints={NEGATIVE_HINTS}, slander_hints={SLANDER_HINTS}")
 
-    print(f"🦘 {BOT_NAME} started. Monitoring {len(FEEDS)} feeds.")
+    total_new = 0
+    dbg(f"\n=== Starting feed check cycle at {datetime.now().isoformat()} ===")
+    
+    for feed_url in FEEDS:
+        total_new += process_feed(feed_url, sent)
+
+    # Always save after processing all feeds
+    save_sent(sent)
+    
+    if total_new > 0:
+        print(f"🦘 {BOT_NAME}: {total_new} new post(s)!")
+        dbg(f"Check complete → {total_new} new")
+    else:
+        print(f"🦘 {BOT_NAME}: No new posts.")
+        dbg("Check complete → 0 new")
+    
+    print("✅ Single check complete, exiting.")
+
+def loop():
+    """Continuous loop mode for local/server deployment."""
+    # init debug file per run
+    if DEBUG:
+        try:
+            with open(LOG_FILE, "w", encoding="utf-8") as f:
+                f.write(f"=== Feedaroo Debug Log Started at {datetime.now().isoformat()} ===\n")
+            print(f"🐛 Debug mode enabled, logging to {LOG_FILE}")
+        except Exception:
+            pass
+
+    sent = cleanup_sent(load_sent())
+    
+    print(f"🦘 {BOT_NAME} started (continuous mode). Monitoring {len(FEEDS)} feeds.")
     print(f"📊 Tracking {len(sent)} previously sent entries")
     dbg(f"Feeds={len(FEEDS)}, thr={POS_THRESHOLD}, keywords={KEYWORDS}, neg_hints={NEGATIVE_HINTS}, slander_hints={SLANDER_HINTS}")
 
@@ -384,8 +419,10 @@ def loop():
         for feed_url in FEEDS:
             total_new += process_feed(feed_url, sent)
 
+        # Always save after each cycle
+        save_sent(sent)
+        
         if total_new > 0:
-            save_sent(sent)
             print(f"🦘 {BOT_NAME}: {total_new} new post(s)!")
             dbg(f"Round complete → {total_new} new")
         else:
