@@ -56,6 +56,7 @@ jobs:
           sleep 20
           kill $PID || true
 
+      # 💾 sent DB mentése cache-be
       - name: 💾 sent DB mentése cache-be
         if: always()
         uses: actions/cache/save@v4
@@ -63,10 +64,13 @@ jobs:
           path: sent_feedaroo.json
           key: feedaroo-sent-db-${{ github.run_id }}
 
-      - name: 📎 Debug log feltöltése (artifact)
+      # 🪶 Debug + sent DB feltöltése (artifact)
+      - name: 📎 Log & sent DB feltöltése
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: feedaroo-debug-${{ github.run_number }}
-          path: feedaroo_debug.log
-          if-no-files-found: ignore
+          name: feedaroo_artifacts_${{ github.run_number }}
+          path: |
+            feedaroo_debug.log
+            sent_feedaroo.json
+          if-no-files-found: warn
