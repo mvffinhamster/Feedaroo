@@ -1,36 +1,52 @@
 name: 🦘 Feedaroo
-
 on:
   schedule:
     - cron: "*/15 * * * *"   # Every 15 minutes (UTC)
   workflow_dispatch:
-
 concurrency:
   group: feedaroo
   cancel-in-progress: true
-
 jobs:
   run-feedaroo:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-
     steps:
       - name: 🗓️ Trigger info
         run: |
           echo "Event: ${{ github.event_name }}"
           echo "UTC now: $(date -u '+%Y-%m-%d %H:%M:%S')"
-
+      
       - name: 📦 Checkout repo
         uses: actions/checkout@v4
-
+      
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
+      
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
-
+      
+      - name: 📥 Download previous sent database
+        uses: dawidd6/action-download-artifact@v3
+        continue-on-error: true
+        with:
+          workflow: feedaroo.yml
+          name: feedaroo-sent-db
+          path: .
+          if_no_artifact_found: warn
+      
+      - name: 🔍 Check database status
+        run: |
+          if [ -f sent_feedaroo.json ]; then
+            echo "✅ Found existing database:"
+            ls -lh sent_feedaroo.json
+            ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
+            echo "📊 Database contains $ENTRIES entries"
+          else
+            echo "ℹ️ No existing database found, starting fresh"
+          fi
+      
       - name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
@@ -51,15 +67,29 @@ jobs:
           sleep 20
           kill $PID || true
           echo "Feedaroo run complete."
-
-      - name: 💾 Save sent database to artifact
+      
+      - name: 📊 Show final database stats
+        if: always()
+        run: |
+          if [ -f sent_feedaroo.json ]; then
+            echo "📦 Final database:"
+            ls -lh sent_feedaroo.json
+            ENTRIES=$(jq 'length' sent_feedaroo.json 2>/dev/null || echo "0")
+            echo "📊 Database contains $ENTRIES entries"
+          else
+            echo "⚠️ No database file found after run"
+          fi
+      
+      - name: 💾 Save sent database (persistent)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: feedaroo-sent-db-${{ github.run_number }}
+          name: feedaroo-sent-db
           path: sent_feedaroo.json
           if-no-files-found: ignore
-
+          retention-days: 90
+          overwrite: true
+      
       - name: 📎 Upload debug log
         if: always()
         uses: actions/upload-artifact@v4
