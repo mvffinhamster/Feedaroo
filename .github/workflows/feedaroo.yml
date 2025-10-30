@@ -2,7 +2,7 @@ name: 🦘 Feedaroo
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/15 * * * *"   # every 15 minutes (UTC)
   workflow_dispatch:
 
 concurrency:
@@ -28,13 +28,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      # 🧠 PERSISTENT MEMORY - fix kulcs, mindkét run típusra ugyanaz!
       - name: 💾 Restore sent DB from cache
         id: restore-db
-        uses: actions/cache/restore@v4
+        uses: actions/cache@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db
-          restore-keys: feedaroo-sent-db
+          key: feedaroo-sent-db-global
+          restore-keys: |
+            feedaroo-sent-db-global
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
@@ -53,18 +55,21 @@ jobs:
           SLANDER_HINTS:   ${{ secrets.SLANDER_HINTS }}
           MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
           CHECK_INTERVAL_MINUTES: "999999"
+          RUN_ONCE: "1"   # 👈 ez itt az új fix, ne fusson végtelen ciklusban
         run: |
           echo "Starting Feedaroo..."
-          timeout 240 python main.py || true
+          python main.py
           echo "Feedaroo complete."
 
+      # 💾 SAVE — ugyanazzal a kulccsal, ne hozzon létre új cache-t
       - name: 💾 Save sent DB back to cache
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db
+          key: feedaroo-sent-db-global
 
+      # 🪵 LOG — maradhat, de ez csak debug
       - name: 📎 Upload debug log
         if: always()
         uses: actions/upload-artifact@v4
