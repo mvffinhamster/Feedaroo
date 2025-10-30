@@ -131,14 +131,18 @@ def classify_article(title, desc):
 def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     clean_link = re.sub(r"\?.*", "", link)
     desc_text = f"{clean_desc(desc)}\n\n🔗 {clean_link}"
+
+    embed = {
         "title": f"{emoji} {title}"[:256],
         "url": link,
         "description": desc_text[:4096],
         "color": EMBED_COLOR,
         "timestamp": datetime.utcnow().isoformat()
     }
+
     if img:
         embed["image"] = {"url": img}
+
     requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
