@@ -28,18 +28,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 💾 PERSISTENT MEMORY — mindig ugyanaz a kulcs!
-      - name: 💾 Restore sent DB from cache
-        id: cache-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: sent_feedaroo.json
-          key: feedaroo-sent-db
-          restore-keys: |
-            feedaroo-sent-db
-
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
+
+      # 💾 PERSISTENT MEMORY — Artifact alapú mentés
+      - name: 📥 Download previous sent DB
+        uses: dawidd6/action-download-artifact@v3
+        continue-on-error: true
+        with:
+          workflow: feedaroo.yml
+          name: feedaroo-sent-db
+          path: .
+          if_no_artifact_found: warn
 
       - name: 🚀 Run Feedaroo (single check window)
         env:
@@ -54,22 +54,23 @@ jobs:
           NEGATIVE_HINTS:  ${{ secrets.NEGATIVE_HINTS }}
           SLANDER_HINTS:   ${{ secrets.SLANDER_HINTS }}
           MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
-          CHECK_INTERVAL_MINUTES: "999999"   # hogy a loop ne pörögjön tovább
+          CHECK_INTERVAL_MINUTES: "999999"
         run: |
           echo "Starting Feedaroo single check..."
-          # 4 perc futási ablak elég a parsereknek + postnak
           timeout 240 python main.py || true
           echo "Feedaroo run complete."
 
-      # 💾 Friss állapot mentése UGYANAZZAL a kulccsal → tartós memória
-      - name: 💾 Save sent DB to cache
+      # 💾 Friss állapot mentése UGYANAZZAL A NÉVVEL → tartós memória
+      - name: 💾 Upload sent DB (persistent)
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/upload-artifact@v4
         with:
+          name: feedaroo-sent-db
           path: sent_feedaroo.json
-          key: feedaroo-sent-db
+          if-no-files-found: ignore
+          retention-days: 90
 
-      # 📎 Debug & DB artifact (ellenőrzéshez)
+      # 📎 Debug log + DB fájl mentése külön artifactba
       - name: 📎 Upload artifacts (debug log + DB)
         if: always()
         uses: actions/upload-artifact@v4
