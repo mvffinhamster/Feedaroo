@@ -2,7 +2,7 @@ name: 🦘 Feedaroo
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # 15 percenként (UTC)
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -28,20 +28,18 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: 💾 Restore sent DB from cache
+        id: restore-db
+        uses: actions/cache/restore@v4
+        with:
+          path: sent_feedaroo.json
+          key: feedaroo-sent-db
+          restore-keys: feedaroo-sent-db
+
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
 
-      # 💾 PERSISTENT MEMORY — Artifact alapú mentés
-      - name: 📥 Download previous sent DB
-        uses: dawidd6/action-download-artifact@v3
-        continue-on-error: true
-        with:
-          workflow: feedaroo.yml
-          name: feedaroo-sent-db
-          path: .
-          if_no_artifact_found: warn
-
-      - name: 🚀 Run Feedaroo (single check window)
+      - name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
           FEEDS:           ${{ secrets.FEEDS }}
@@ -56,28 +54,22 @@ jobs:
           MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
           CHECK_INTERVAL_MINUTES: "999999"
         run: |
-          echo "Starting Feedaroo single check..."
+          echo "Starting Feedaroo..."
           timeout 240 python main.py || true
-          echo "Feedaroo run complete."
+          echo "Feedaroo complete."
 
-      # 💾 Friss állapot mentése UGYANAZZAL A NÉVVEL → tartós memória
-      - name: 💾 Upload sent DB (persistent)
+      - name: 💾 Save sent DB back to cache
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/cache/save@v4
         with:
-          name: feedaroo-sent-db
           path: sent_feedaroo.json
-          if-no-files-found: ignore
-          retention-days: 90
+          key: feedaroo-sent-db
 
-      # 📎 Debug log + DB fájl mentése külön artifactba
-      - name: 📎 Upload artifacts (debug log + DB)
+      - name: 📎 Upload debug log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: feedaroo-artifacts-${{ github.run_number }}
-          path: |
-            feedaroo_debug.log
-            sent_feedaroo.json
+          name: feedaroo-debug-${{ github.run_number }}
+          path: feedaroo_debug.log
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
