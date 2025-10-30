@@ -129,8 +129,8 @@ def classify_article(title, desc):
 
 # ============ Send ============
 def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
-    desc_text = f"{clean_desc(desc)}\n\n🔗 {re.sub(r'\\?.*', '', link)}"
-    embed = {
+    clean_link = re.sub(r"\?.*", "", link)
+    desc_text = f"{clean_desc(desc)}\n\n🔗 {clean_link}"
         "title": f"{emoji} {title}"[:256],
         "url": link,
         "description": desc_text[:4096],
