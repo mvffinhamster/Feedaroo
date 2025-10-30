@@ -44,6 +44,7 @@ jobs:
       - name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
+LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
           FEEDS:           ${{ secrets.FEEDS }}
           KEYWORDS:        ${{ secrets.KEYWORDS }}
           BOT_NAME:        ${{ secrets.BOT_NAME }}
