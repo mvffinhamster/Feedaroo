@@ -44,7 +44,7 @@ jobs:
       - name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
-LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
+          LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
           FEEDS:           ${{ secrets.FEEDS }}
           KEYWORDS:        ${{ secrets.KEYWORDS }}
           BOT_NAME:        ${{ secrets.BOT_NAME }}
@@ -53,8 +53,6 @@ LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
           DEBUG:           "1"
           LOG_FILE:        feedaroo_debug.log
           NEGATIVE_HINTS:  ${{ secrets.NEGATIVE_HINTS }}
-          SLANDER_HINTS:   ${{ secrets.SLANDER_HINTS }}
-          MCLAREN_TERMS:   ${{ secrets.MCLAREN_TERMS }}
           CHECK_INTERVAL_MINUTES: "999999"
           RUN_ONCE: "1"   # 👈 ez itt az új fix, ne fusson végtelen ciklusban
         run: |
