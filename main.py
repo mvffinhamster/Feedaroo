@@ -1,5 +1,5 @@
 # pip install -r requirements.txt
-# Feedaroo — Oscar-positive news only (clean + detailed log edition)
+# Feedaroo — Oscar-positive news only (clean + detailed log edition + Discord telemetry summary)
 
 import feedparser, requests, time, hashlib, json, os, re
 from datetime import datetime, timedelta
@@ -7,7 +7,6 @@ from urllib.parse import urlparse
 from textblob import TextBlob
 
 # ============ Constants ============
-
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
 EMBED_COLOR = 0xFF9900
 MAX_DESC_LENGTH = 300
@@ -26,7 +25,6 @@ SOURCE_EMOJIS = {
 }
 
 # ============ Config / env ============
-
 def load_env():
     try:
         with open("env.json", "r", encoding="utf-8") as f:
@@ -53,6 +51,7 @@ def get_list_env(name, default=None):
 load_env()
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
+LOG_WEBHOOK    = os.getenv("LOG_WEBHOOK", "").strip()
 FEEDS          = get_list_env("FEEDS", [])
 KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
@@ -63,11 +62,9 @@ DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
-
-OSCAR_TERMS = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri"]
+OSCAR_TERMS    = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri"]
 
 # ============ Debug log ============
-
 def dbg(msg: str):
     if not DEBUG:
         return
@@ -79,7 +76,6 @@ def dbg(msg: str):
         print(f"⚠️ Debug log error: {e}")
 
 # ============ Sent DB ============
-
 def load_sent():
     try:
         with open(SENT_DB, "r", encoding="utf-8") as f:
@@ -107,7 +103,6 @@ def cleanup_sent(sent: dict) -> dict:
     return cleaned
 
 # ============ Helpers ============
-
 def uid(entry):
     link = getattr(entry, "link", "").strip()
     if link:
@@ -150,14 +145,12 @@ def contains_any(blob: str, terms: list[str]) -> bool:
     return any(t in blob for t in terms if t)
 
 def classify_article(title: str, desc: str) -> bool:
-    """Return True if this is a negative Oscar-related article."""
     blob = f"{title} {desc}".lower()
     neg_hit = contains_any(blob, NEGATIVE_HINTS)
     oscar_hit = contains_any(blob, OSCAR_TERMS)
     return neg_hit and oscar_hit
 
 # ============ Discord send ============
-
 def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     clean_link = re.sub(r"\?.*", "", link)
     desc_text = clean_desc(desc or "")
@@ -190,14 +183,13 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
         return False
 
 # ============ Feed processing ============
-
-def process_feed(url, sent):
-    new_posts = 0
+def process_feed(url, sent, stats):
     try:
         dbg(f"Fetching feed: {url}")
         feed = feedparser.parse(url, request_headers=USER_AGENT)
 
         for entry in getattr(feed, "entries", []):
+            stats["entries"] += 1
             title = (getattr(entry, "title", "") or "").strip()
             link  = (getattr(entry, "link", "") or "").strip()
             desc  = getattr(entry, "summary", "") or getattr(entry, "description", "")
@@ -209,14 +201,14 @@ def process_feed(url, sent):
                 continue
             if entry_id in sent:
                 dbg(f"☑️ [{src}] DUPLICATE: '{title[:80]}'")
+                stats["dupes"] += 1
                 continue
 
-            # skip negative Oscar news
             if classify_article(title, desc):
                 dbg(f"🚫 [{src}] Negative Oscar article: '{title[:80]}'")
+                stats["skipped"] += 1
                 continue
 
-            # sentiment check + readable log
             ok_pol, pol = is_positive(desc or title, POS_THRESHOLD)
             sentiment_label = (
                 "⭐️ POSITIVE" if pol >= POS_THRESHOLD
@@ -227,12 +219,12 @@ def process_feed(url, sent):
 
             if not ok_pol:
                 dbg(f"❌ [{src}] Skipped (below threshold {POS_THRESHOLD})")
+                stats["skipped"] += 1
                 continue
-            else:
-                dbg(f"✅ [{src}] Accepted (positive enough)")
 
             if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
                 dbg(f"⏭️ [{src}] No keyword match: '{title[:80]}'")
+                stats["skipped"] += 1
                 continue
 
             img = None
@@ -244,42 +236,58 @@ def process_feed(url, sent):
 
             if send_to_discord(title, link, desc, img, emoji):
                 sent[entry_id] = datetime.now().isoformat()
-                new_posts += 1
+                stats["posted"] += 1
                 time.sleep(DISCORD_RATE_LIMIT_DELAY)
 
     except Exception as e:
         dbg(f"💥 Error processing feed {url}: {e}")
-    return new_posts
+
+# ============ Discord Log Summary ============
+def send_log_summary(stats, run_type="Scheduled"):
+    webhook = LOG_WEBHOOK
+    if not webhook:
+        dbg("ℹ️ No LOG_WEBHOOK set, skipping log summary.")
+        return
+
+    bot_name = BOT_NAME or "Feedaroo 🦘"
+    emoji = "🦘"
+    msg = (
+        f"🕒 **Telemetry Report: {bot_name} ({run_type} Run)**\n"
+        f"Feeds checked: {stats.get('feeds', 0)}\n"
+        f"Total entries parsed: {stats.get('entries', 0)}\n"
+        f"✅ Posted: {stats.get('posted', 0)} | ❌ Skipped: {stats.get('skipped', 0)} | ☑️ Duplicates: {stats.get('dupes', 0)}\n"
+        f"🧠 Memory updated — {stats.get('posted', 0)} new entries saved.\n\n"
+        f"Copy that, Feedaroo. Telemetry clean, keep going."
+    )
+
+    try:
+        requests.post(webhook, json={"content": msg}, timeout=10)
+        dbg("✅ Log summary sent to Discord.")
+    except Exception as e:
+        dbg(f"❌ Failed to send log summary: {e}")
 
 # ============ Modes ============
-
 def single_check():
     sent = cleanup_sent(load_sent())
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0}
     print(f"📦 Memory check: loaded {len(sent)} entries from cache.")
     print(f"🦘 {BOT_NAME} single run, {len(FEEDS)} feeds.")
-    total_new = 0
-    for feed_url in FEEDS:
-        total_new += process_feed(feed_url, sent)
-    save_sent(sent)
-    print(f"✅ Done, {total_new} new posts.")
 
-def loop():
-    sent = cleanup_sent(load_sent())
-    while True:
-        total_new = 0
-        for feed_url in FEEDS:
-            total_new += process_feed(feed_url, sent)
-        save_sent(sent)
-        print(f"Cycle done → {total_new} new posts.")
-        time.sleep(CHECK_INTERVAL)
+    for feed_url in FEEDS:
+        process_feed(feed_url, sent, stats)
+
+    save_sent(sent)
+    print(f"✅ Done, {stats['posted']} new posts.")
+
+    run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME", "") == "workflow_dispatch" else "Scheduled"
+    send_log_summary(stats, run_type)
 
 # ============ Entry point ============
-
 if __name__ == "__main__":
     try:
         if CHECK_INTERVAL > 100000:
             single_check()
         else:
-            loop()
+            single_check()  # we don’t loop for GitHub actions
     except KeyboardInterrupt:
         print("🛑 Stopped manually.")
