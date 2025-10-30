@@ -255,6 +255,7 @@ def process_feed(url, sent):
 
 def single_check():
     sent = cleanup_sent(load_sent())
+    print(f"📦 Memory check: loaded {len(sent)} entries from cache.")
     print(f"🦘 {BOT_NAME} single run, {len(FEEDS)} feeds.")
     total_new = 0
     for feed_url in FEEDS:
