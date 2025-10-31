@@ -188,7 +188,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 
     if status == "fail":
         msg = (
-            f"🕒 **Telemetry Report: Feedaroo 🦘 ({run_type} Run)**\n"
+            f"🕒 **Telemetry Report: Feedaroo ({run_type} Run)**\n"
             f"⚠️ Feedaroo encountered an error during execution.\n"
             f"💥 Error: `{error}`\n"
             f"🧠 Memory state preserved — no data loss detected.\n\n"
@@ -210,7 +210,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         )
 
         msg = (
-            f"🕒 **Telemetry Report: Feedaroo 🦘 ({run_type} Run)**\n"
+            f"🕒 **Telemetry Report: Feedaroo ({run_type} Run)**\n"
             f"Feeds checked: {stats['feeds']}\n"
             f"Total entries checked: {stats['entries']}\n"
             f"✅ Posted: {posted}\n"
