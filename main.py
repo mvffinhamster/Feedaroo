@@ -191,9 +191,10 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"🕒 **Telemetry Report: Feedaroo ({run_type} Run)**\n"
             f"⚠️ Feedaroo encountered an error during execution.\n"
             f"💥 Error: `{error}`\n"
-            f"🧠 Memory state preserved — no data loss detected.\n\n"
+            f"🧠 Memory state preserved. No data loss detected.\n\n"
             "*Copy that, Feedaroo. Standing by for next run.*"
         )
+        msg += "\n_  _"
     else:
         posted = stats["posted"]
         skipped = stats["skipped"]
@@ -221,6 +222,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"{mem_line}\n\n"
             "*Copy that, Feedaroo. Telemetry clean, keep going.*"
         )
+        msg += "\n_  _"
 
     requests.post(webhook, json={"content": msg}, timeout=10)
 
