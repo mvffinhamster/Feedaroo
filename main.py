@@ -80,6 +80,7 @@ def load_sent():
 def save_sent(sent):
     with open(SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
+        f.close()
     print("saved")
     time.sleep(DISCORD_RATE_LIMIT_DELAY)
     return
