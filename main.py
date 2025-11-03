@@ -80,6 +80,8 @@ def load_sent():
 def save_sent(sent):
     with open(SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
+    print("saved")
+    return
 
 def cleanup_sent(sent):
     cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
