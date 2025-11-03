@@ -79,7 +79,7 @@ def load_sent():
         return {}
 
 def save_sent(sent):
-    with open(NEW_SENT_DB, "w", encoding="utf-8") as f:
+    with open(SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
         f.close()
     print("saved")
