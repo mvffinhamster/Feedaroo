@@ -36,7 +36,7 @@ jobs:
           path: sent_feedaroo.json
           key: feedaroo-sent-db-global
           restore-keys: |
-            feedaroo-sent-db-global-
+            feedaroo-sent-db-global
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
@@ -60,14 +60,28 @@ jobs:
           python main.py
           echo "Feedaroo complete."
 
-      # 💾 SAVE — ugyanazzal a kulccsal, ne hozzon létre új cache-t
-      - name: 💾 Save sent DB back to cache
-        id: save-db
-        #if: always()
+      # # 💾 SAVE — ugyanazzal a kulccsal, ne hozzon létre új cache-t
+      # - name: 💾 Save sent DB back to cache
+      #   id: save-db
+      #   #if: always()
+      #   uses: actions/cache/save@v4
+      #   with:
+      #     path: sent_feedaroo.json
+      #     key: feedaroo-sent-db-global-v2
+
+      - name: Delete Previous Cache
+        if: always()
+        continue-on-error: true
+        run: |
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete "feedaroo-sent-db-global" --confirm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Save Cache
         uses: actions/cache/save@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global-v2
+          key: feedaroo-sent-db-global
 
       # 🪵 LOG — maradhat, de ez csak debug
       - name: 📎 Upload debug log
