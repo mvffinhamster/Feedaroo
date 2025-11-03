@@ -34,9 +34,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global
+          key: feedaroo-sent-db-global-
           restore-keys: |
-            feedaroo-sent-db-global
+            feedaroo-sent-db-global-
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
