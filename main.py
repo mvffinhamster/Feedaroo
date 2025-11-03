@@ -152,7 +152,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 
 # ============ Process ============
 def process_feed(url, sent, stats):
-    print("process_feed sent", sent)
+    # print("process_feed sent", sent)
     feed = feedparser.parse(url, request_headers=USER_AGENT)
     for entry in getattr(feed, "entries", []):
         stats["entries"] += 1
@@ -182,11 +182,11 @@ def process_feed(url, sent, stats):
             stats["keyword_miss"] += 1
             continue
 
-        # send_to_discord(title, link, desc, None, emoji)
+        send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
-    print("end proccess_ sent", sent)
+    # print("end proccess_ sent", sent)
     return sent
         
 # ============ Telemetry ============
@@ -244,11 +244,11 @@ def single_check():
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats)
-        print("returned sent", sent)
+        # print("returned sent", sent)
         save_sent(sent)
         memory_count = len(sent)
         status = "success" if stats["posted"] > 0 else "idle"
-        # send_telemetry(stats, run_type, memory_count, status)
+        send_telemetry(stats, run_type, memory_count, status)
         
         sent = cleanup_sent(load_sent())
         print("final sent", sent)
