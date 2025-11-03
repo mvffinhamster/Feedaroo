@@ -230,6 +230,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 # ============ Run ============
 def single_check():
     sent = cleanup_sent(load_sent())
+    print(sent)
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     try:
