@@ -11,8 +11,6 @@ concurrency:
 
 jobs:
   run-feedaroo:
-    permissions:
-          contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 6
 
@@ -63,27 +61,14 @@ jobs:
           echo "Feedaroo complete."
 
       # # 💾 SAVE — ugyanazzal a kulccsal, ne hozzon létre új cache-t
-      # - name: 💾 Save sent DB back to cache
-      #   id: save-db
-      #   #if: always()
-      #   uses: actions/cache/save@v4
-      #   with:
-      #     path: sent_feedaroo.json
-      #     key: feedaroo-sent-db-global-v2
-
-      - name: Delete Previous Cache
+      - name: 💾 Save sent DB back to cache
+        id: save-db
         if: always()
-        continue-on-error: true
-        run: |
-          gh extension install actions/gh-actions-cache
-          gh actions-cache delete "feedaroo-sent-db-global" --confirm
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Save Cache
         uses: actions/cache/save@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global
+          key: feedaroo-sent-db-global-${{ github.run_number }}
+
 
       # 🪵 LOG — maradhat, de ez csak debug
       - name: 📎 Upload debug log
