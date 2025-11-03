@@ -179,7 +179,8 @@ def process_feed(url, sent, stats):
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
-
+        return sent
+        
 # ============ Telemetry ============
 def send_telemetry(stats, run_type, memory_count, status="success", error=None):
     webhook = LOG_WEBHOOK
@@ -233,7 +234,7 @@ def single_check():
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     try:
         for feed_url in FEEDS:
-            process_feed(feed_url, sent, stats)
+            sent = process_feed(feed_url, sent, stats)
         save_sent(sent)
         memory_count = len(sent)
         status = "success" if stats["posted"] > 0 else "idle"
