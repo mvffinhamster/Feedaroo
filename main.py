@@ -179,7 +179,7 @@ def process_feed(url, sent, stats):
             stats["keyword_miss"] += 1
             continue
 
-        send_to_discord(title, link, desc, None, emoji)
+        # send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
@@ -245,7 +245,10 @@ def single_check():
         save_sent(sent)
         memory_count = len(sent)
         status = "success" if stats["posted"] > 0 else "idle"
-        send_telemetry(stats, run_type, memory_count, status)
+        # send_telemetry(stats, run_type, memory_count, status)
+        
+        sent = cleanup_sent(load_sent())
+        print("final sent", sent)
     except Exception as e:
         err_text = str(e).split("\n")[0]
         send_telemetry(stats, run_type, len(sent), status="fail", error=err_text)
