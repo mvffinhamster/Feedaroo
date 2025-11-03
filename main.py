@@ -80,6 +80,9 @@ def load_sent():
 def save_sent(sent):
     with open(SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
+    print("saved")
+    time.sleep(DISCORD_RATE_LIMIT_DELAY)
+    return
 
 def cleanup_sent(sent):
     cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
@@ -147,6 +150,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 
 # ============ Process ============
 def process_feed(url, sent, stats):
+    print("process_feed sent", sent)
     feed = feedparser.parse(url, request_headers=USER_AGENT)
     for entry in getattr(feed, "entries", []):
         stats["entries"] += 1
@@ -156,7 +160,8 @@ def process_feed(url, sent, stats):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-
+        
+        
         if not title or not link:
             continue
         if entry_id in sent:
@@ -175,11 +180,12 @@ def process_feed(url, sent, stats):
             stats["keyword_miss"] += 1
             continue
 
-        send_to_discord(title, link, desc, None, emoji)
+        # send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
-        return sent
+    print("end proccess_ sent", sent)
+    return sent
         
 # ============ Telemetry ============
 def send_telemetry(stats, run_type, memory_count, status="success", error=None):
@@ -230,16 +236,20 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 # ============ Run ============
 def single_check():
     sent = cleanup_sent(load_sent())
-    print(sent)
+    print("sent", sent)
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats)
+        print("returned sent", sent)
         save_sent(sent)
         memory_count = len(sent)
         status = "success" if stats["posted"] > 0 else "idle"
-        send_telemetry(stats, run_type, memory_count, status)
+        # send_telemetry(stats, run_type, memory_count, status)
+        
+        sent = cleanup_sent(load_sent())
+        print("final sent", sent)
     except Exception as e:
         err_text = str(e).split("\n")[0]
         send_telemetry(stats, run_type, len(sent), status="fail", error=err_text)
