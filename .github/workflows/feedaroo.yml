@@ -34,7 +34,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global-${{ github.run_number - 1}}
+          key: feedaroo-sent-db-global-$(( github.run_number - 1))
           restore-keys: |
             feedaroo-sent-db-global-
 
