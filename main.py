@@ -157,7 +157,7 @@ def process_feed(url, sent, stats):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-        print("entry_id", entry_id)
+        
         
         if not title or not link:
             continue
@@ -181,6 +181,7 @@ def process_feed(url, sent, stats):
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
+        print("end proccess_ sent", sent)
         return sent
         
 # ============ Telemetry ============
@@ -238,6 +239,7 @@ def single_check():
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats)
+        print("returned sent", sent)
         save_sent(sent)
         memory_count = len(sent)
         status = "success" if stats["posted"] > 0 else "idle"
