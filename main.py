@@ -160,22 +160,22 @@ def process_feed(url, sent, stats):
         
         
         if not title or not link:
-            continue
+            return sent
         if entry_id in sent:
             stats["dupes"] += 1
-            continue
+            return sent
         if classify_article(title, desc):
             stats["negatives"] += 1
-            continue
+            return sent
 
         ok_pol, _ = is_positive(desc or title)
         if not ok_pol:
             stats["skipped"] += 1
-            continue
+            return sent
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             stats["keyword_miss"] += 1
-            continue
+            return sent
 
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
