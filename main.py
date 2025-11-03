@@ -81,6 +81,7 @@ def save_sent(sent):
     with open(SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
     print("saved")
+    time.sleep(DISCORD_RATE_LIMIT_DELAY)
     return
 
 def cleanup_sent(sent):
