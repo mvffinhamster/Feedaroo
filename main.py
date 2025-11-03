@@ -147,6 +147,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 
 # ============ Process ============
 def process_feed(url, sent, stats):
+    print("process_feed sent", sent)
     feed = feedparser.parse(url, request_headers=USER_AGENT)
     for entry in getattr(feed, "entries", []):
         stats["entries"] += 1
@@ -156,7 +157,8 @@ def process_feed(url, sent, stats):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-
+        print("entry_id", entry_id)
+        
         if not title or not link:
             continue
         if entry_id in sent:
@@ -231,7 +233,6 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 def single_check():
     sent = cleanup_sent(load_sent())
     print("sent", sent)
-    print("see above")
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     try:
