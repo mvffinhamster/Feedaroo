@@ -76,7 +76,7 @@ jobs:
           gh extension install actions/gh-actions-cache
           gh actions-cache delete "feedaroo-sent-db-global" --confirm
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
       - name: Save Cache
         uses: actions/cache/save@v4
         with:
