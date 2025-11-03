@@ -160,29 +160,29 @@ def process_feed(url, sent, stats):
         
         
         if not title or not link:
-            return sent
+            continue
         if entry_id in sent:
             stats["dupes"] += 1
-            return sent
+            continue
         if classify_article(title, desc):
             stats["negatives"] += 1
-            return sent
+            continue
 
         ok_pol, _ = is_positive(desc or title)
         if not ok_pol:
             stats["skipped"] += 1
-            return sent
+            continue
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             stats["keyword_miss"] += 1
-            return sent
+            continue
 
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
-        print("end proccess_ sent", sent)
-        return sent
+    print("end proccess_ sent", sent)
+    return sent
         
 # ============ Telemetry ============
 def send_telemetry(stats, run_type, memory_count, status="success", error=None):
