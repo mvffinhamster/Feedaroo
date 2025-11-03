@@ -53,6 +53,7 @@ KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
 BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
 SENT_DB        = os.getenv("SENT_DB", "sent_feedaroo.json")
+NEW_SENT_DB    = os.getenv("NEW_SENT_DB", "sent_feedaroo.json")
 POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
 DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
@@ -78,7 +79,7 @@ def load_sent():
         return {}
 
 def save_sent(sent):
-    with open(SENT_DB, "w", encoding="utf-8") as f:
+    with open(NEW_SENT_DB, "w", encoding="utf-8") as f:
         json.dump(sent, f, indent=2)
         f.close()
     print("saved")
