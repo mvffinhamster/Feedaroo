@@ -36,7 +36,7 @@ jobs:
           path: sent_feedaroo.json
           key: feedaroo-sent-db-global
           restore-keys: |
-            feedaroo-sent-db-global
+            feedaroo-sent-db-global-
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
@@ -67,7 +67,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global
+          key: feedaroo-sent-db-global-v2
 
       # 🪵 LOG — maradhat, de ez csak debug
       - name: 📎 Upload debug log
