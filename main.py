@@ -117,11 +117,10 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(text):
+def is_positive(text, sentiment_analyzer):
     if not text:
         return False, 0.0
     try:
-        sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
         result = sentiment_analyzer(text, aspect="Oscar")
         print(result)
         pol = TextBlob(text).sentiment.polarity
@@ -155,9 +154,10 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     #requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
-def process_feed(url, sent, stats):
+def process_feed(url, sent, stats, sentiment_analyzer):
     # print("process_feed sent", sent)
     feed = feedparser.parse(url, request_headers=USER_AGENT)
+    
     for entry in getattr(feed, "entries", []):
         stats["entries"] += 1
         title = (getattr(entry, "title", "") or "").strip()
@@ -166,23 +166,33 @@ def process_feed(url, sent, stats):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-        
-        
+
+        if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
+            print("i exist")
+            
         if not title or not link:
             continue
         if entry_id in sent:
+            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
+                print('duplicated')
             stats["dupes"] += 1
             continue
         if classify_article(title, desc):
+            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
+                print('negative')
             stats["negatives"] += 1
             continue
 
-        ok_pol, _ = is_positive(desc or title)
+        ok_pol, _ = is_positive(desc or title, sentiment_analyzer)
         if not ok_pol:
+            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
+                print('skipped')
             stats["skipped"] += 1
             continue
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
+                print('keyword_miss')
             stats["keyword_miss"] += 1
             continue
 
@@ -237,7 +247,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         )
         msg += "\n_  _"
 
-    requests.post(webhook, json={"content": msg}, timeout=10)
+    # requests.post(webhook, json={"content": msg}, timeout=10)
 
 # ============ Run ============
 def single_check():
@@ -245,9 +255,10 @@ def single_check():
     print("sent", sent)
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
+    sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
     try:
         for feed_url in FEEDS:
-            sent = process_feed(feed_url, sent, stats)
+            sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
         # print("returned sent", sent)
         save_sent(sent)
         memory_count = len(sent)
