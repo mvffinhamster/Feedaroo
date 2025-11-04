@@ -5,6 +5,7 @@ import feedparser, requests, time, hashlib, json, os, re, traceback
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from textblob import TextBlob
+from transformers import pipeline
 
 # ============ Constants ============
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
@@ -120,6 +121,9 @@ def is_positive(text):
     if not text:
         return False, 0.0
     try:
+        sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
+        result = sentiment_analyzer(text, aspect="Oscar")
+        print(result)
         pol = TextBlob(text).sentiment.polarity
         return pol >= POS_THRESHOLD, pol
     except:
