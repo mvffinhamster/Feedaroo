@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from textblob import TextBlob
 from transformers import pipeline
+from huggingface_hub import notebook_login
 
 # ============ Constants ============
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
@@ -24,6 +25,7 @@ SOURCE_EMOJIS = {
     "theage.com.au": "🟣",
     "smh.com.au": "⚫️"
 }
+
 
 # ============ Config / env ============
 def load_env():
@@ -60,6 +62,7 @@ DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 OSCAR_TERMS    = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri"]
+HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
 # ============ Debug ============
 def dbg(msg):
@@ -124,7 +127,7 @@ def is_positive(text, sentiment_analyzer):
     try:
         pol = TextBlob(text).sentiment.polarity
         # print("old", pol)
-        result = sentiment_analyzer("I love Oscar", aspect="Oscar")
+        result = sentiment_analyzer(text, aspect="Oscar")
         # print("new", result)
         return pol >= POS_THRESHOLD, pol
     except:
@@ -254,10 +257,13 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 # ============ Run ============
 def single_check():
     sent = cleanup_sent(load_sent())
+    notebook_login(HUGGINGFACE)
     print("sent", sent)
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
+    result = sentiment_analyzer("I love Oscar", aspect="Oscar")
+    print(result)
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
