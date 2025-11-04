@@ -237,7 +237,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         )
         msg += "\n_  _"
 
-    #requests.post(webhook, json={"content": msg}, timeout=10)
+    requests.post(webhook, json={"content": msg}, timeout=10)
 
 # ============ Run ============
 def single_check():
