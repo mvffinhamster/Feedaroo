@@ -118,12 +118,14 @@ def find_source_emoji(link):
     return "🦘"
 
 def is_positive(text, sentiment_analyzer):
+    print("check pos")
     if not text:
         return False, 0.0
     try:
-        result = sentiment_analyzer("I love Oscar", aspect="Oscar")
-        print(result)
         pol = TextBlob(text).sentiment.polarity
+        print("old", pol)
+        result = sentiment_analyzer("I love Oscar", aspect="Oscar")
+        print("new", result)
         return pol >= POS_THRESHOLD, pol
     except:
         return False, 0.0
