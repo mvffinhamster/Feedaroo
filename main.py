@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from textblob import TextBlob
 from transformers import pipeline
-from huggingface_hub import notebook_login
+from huggingface_hub import login
 
 # ============ Constants ============
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
