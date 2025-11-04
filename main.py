@@ -123,9 +123,9 @@ def is_positive(text, sentiment_analyzer):
         return False, 0.0
     try:
         pol = TextBlob(text).sentiment.polarity
-        print("old", pol)
+        # print("old", pol)
         result = sentiment_analyzer("I love Oscar", aspect="Oscar")
-        print("new", result)
+        # print("new", result)
         return pol >= POS_THRESHOLD, pol
     except:
         return False, 0.0
