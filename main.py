@@ -152,7 +152,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     if img:
         embed["image"] = {"url": img}
 
-    requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
+    #requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
 def process_feed(url, sent, stats):
@@ -237,7 +237,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         )
         msg += "\n_  _"
 
-    requests.post(webhook, json={"content": msg}, timeout=10)
+    #requests.post(webhook, json={"content": msg}, timeout=10)
 
 # ============ Run ============
 def single_check():
