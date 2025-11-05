@@ -206,15 +206,15 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["keyword_miss"] += 1
             continue   
             
-        if classify_article(title, desc):
-            stats["negatives"] += 1
-            print('neg')
+        # if classify_article(title, desc):
+        #     stats["negatives"] += 1
+        #     print('neg')
             # continue
             
-
-            
         prob, is_pos, warning = is_positive(link, sentiment_analyzer)
-        print(prob, is_pos)
+        if warning:
+            stats["LN_bias"] += 1
+            
         if not is_pos:
             stats["oscar_negative"] += 1
             continue
@@ -247,10 +247,12 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         oscar_negative = stats["oscar_negative"]
         dupes = stats["dupes"]
         keyword_miss = stats["keyword_miss"]
-        negatives = stats["negatives"]
+        # negatives = stats["negatives"]
+        LN_bias = stats["LN_bias"]
 
         dupes_line = f"☑️ Duplicates: {dupes}" if dupes > 0 else "☑️ No duplicates found"
         neg_line = f"🚫 Oscar Negative: {oscar_negative}" if oscar_negative > 0 else "🚫 No negative articles found"
+        bias_line = f"⚠️ Lando Bias: {LN_bias}" if LN_bias > 0 else "⚠️ No articles favouring Lando found"
         mem_line = (
             f"🧠 Memory updated — **{posted} new** entries saved (Articles in memory: {memory_count})"
             if posted > 0 else
@@ -262,23 +264,23 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"Feeds checked: {stats['feeds']}\n"
             f"Total entries checked: {stats['entries']}\n"
             f"✅ Posted: {posted}\n"
-            # f"❌ Skipped: {skipped}\n"
             f"{dupes_line}\n"
             f"#️⃣ No Keyword Match: {keyword_miss}\n"
             f"{neg_line}\n"
+            f"{bias_line}\n"
             f"{mem_line}\n\n"
             "*Copy that, Feedaroo. Telemetry clean, keep going.*"
         )
         msg += "\n_  _"
 
-    # requests.post(webhook, json={"content": msg}, timeout=10)
+    requests.post(webhook, json={"content": msg}, timeout=10)
 
 # ============ Run ============
 def single_check():
     sent = cleanup_sent(load_sent())
     login(token="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")
     print("sent", sent)
-    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "LN_bias": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
