@@ -123,8 +123,9 @@ def find_source_emoji(link):
 
 def is_positive(url, sentiment_analyzer):
     full_text = get_article_text_with_user_agent(url)
+    warning = False
     if not full_text:
-        return 0, False
+        return 0, False, False
     try:
         result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
         result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
@@ -136,11 +137,11 @@ def is_positive(url, sentiment_analyzer):
             print('pos')
             if (label_ln == "Positive") and (prob_ln > prob_osc):
                 print("warning: LN favor")
-            return prob_osc, True
-        return 0, False
-        # return pol >= POS_THRESHOLD, pol
+                warning = True
+            return prob_osc, True, warning
+        return 0, False, warning
     except:
-        return 0, False
+        return 0, False, False
 
 def contains_any(blob, terms):
     return any(t in blob for t in terms if t)
@@ -194,33 +195,28 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-
-        if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-            print("i exist")
             
         if not title or not link:
             continue
         if entry_id in sent:
-            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-                print('duplicated')
             stats["dupes"] += 1
-            continue
-        if classify_article(title, desc):
-            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-                print('negative')
-            stats["negatives"] += 1
             continue
             
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
-            print('keyword_miss')
             stats["keyword_miss"] += 1
-            continue
+            continue   
+            
+        if classify_article(title, desc):
+            stats["negatives"] += 1
+            print('neg')
+            # continue
+            
+
             
         prob, is_pos = is_positive(link, sentiment_analyzer)
+        print(prob, is_pos)
         if not is_pos:
-            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-                print('skipped')
-            stats["skipped"] += 1
+            stats["oscar_negative"] += 1
             continue
         
         print('to discord')
@@ -248,13 +244,13 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         msg += "\n_  _"
     else:
         posted = stats["posted"]
-        skipped = stats["skipped"]
+        oscar_negative = stats["oscar_negative"]
         dupes = stats["dupes"]
         keyword_miss = stats["keyword_miss"]
         negatives = stats["negatives"]
 
         dupes_line = f"☑️ Duplicates: {dupes}" if dupes > 0 else "☑️ No duplicates found"
-        neg_line = f"🚫 Oscar Negative: {negatives}" if negatives > 0 else "🚫 No negative articles found"
+        neg_line = f"🚫 Oscar Negative: {oscar_negative}" if oscar_negative > 0 else "🚫 No negative articles found"
         mem_line = (
             f"🧠 Memory updated — **{posted} new** entries saved (Articles in memory: {memory_count})"
             if posted > 0 else
@@ -266,7 +262,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"Feeds checked: {stats['feeds']}\n"
             f"Total entries checked: {stats['entries']}\n"
             f"✅ Posted: {posted}\n"
-            f"❌ Skipped: {skipped}\n"
+            # f"❌ Skipped: {skipped}\n"
             f"{dupes_line}\n"
             f"#️⃣ No Keyword Match: {keyword_miss}\n"
             f"{neg_line}\n"
@@ -282,7 +278,7 @@ def single_check():
     sent = cleanup_sent(load_sent())
     login(token="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")
     print("sent", sent)
-    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
