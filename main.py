@@ -213,7 +213,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             
 
             
-        prob, is_pos = is_positive(link, sentiment_analyzer)
+        prob, is_pos, warning = is_positive(link, sentiment_analyzer)
         print(prob, is_pos)
         if not is_pos:
             stats["oscar_negative"] += 1
