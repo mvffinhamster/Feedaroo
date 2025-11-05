@@ -130,6 +130,7 @@ def is_positive(text, sentiment_analyzer):
         label_pia, prop_pia = result_pia["label"], result_pia["score"]
         print(label_osc, label_pia)
         if label_osc ==  label_pia == "Positive":
+            print(text)
             return (prob_osc + prop_pia)/2, True
         return 0, False
         # return pol >= POS_THRESHOLD, pol
@@ -197,8 +198,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
                 print('skipped')
             stats["skipped"] += 1
             continue
-        print(title[:256], "\n", desc[:600])
-
+       
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             print('keyword_miss')
             stats["keyword_miss"] += 1
