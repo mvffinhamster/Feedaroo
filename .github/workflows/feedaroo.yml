@@ -49,7 +49,7 @@ jobs:
           KEYWORDS:        ${{ secrets.KEYWORDS }}
           BOT_NAME:        ${{ secrets.BOT_NAME }}
           POS_THRESHOLD:   ${{ secrets.POS_THRESHOLD }}
-          HUGGINGFACE:     ${{ secrets.HUGGINFACE }}
+          HUGGINGFACE:     ${{ secrets.HUGGINGFACE }}
           SENT_DB:         sent_feedaroo.json
           DEBUG:           "1"
           LOG_FILE:        feedaroo_debug.log
