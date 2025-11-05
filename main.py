@@ -133,6 +133,7 @@ def is_positive(url, sentiment_analyzer):
         print(label_osc, prob_osc)
         print(label_ln, prob_ln)
         if label_osc == "Positive":
+            print('pos')
             if (label_ln == "Positive") and (prob_ln > prob_osc):
                 print("warning: LN favor")
             return prob_osc, True
