@@ -134,7 +134,6 @@ def is_positive(url, sentiment_analyzer):
         print(label_osc, prob_osc)
         print(label_ln, prob_ln)
         if label_osc == "Positive":
-            print('pos')
             if (label_ln == "Positive") and (prob_ln > prob_osc):
                 print("warning: LN favor")
                 warning = True
@@ -180,7 +179,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     if img:
         embed["image"] = {"url": img}
     print(title[:256], "\n", desc_text[:600])
-    #requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
+    requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
 def process_feed(url, sent, stats, sentiment_analyzer):
@@ -219,7 +218,6 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["oscar_negative"] += 1
             continue
         
-        print('to discord')
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
@@ -273,7 +271,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         )
         msg += "\n_  _"
 
-    # requests.post(webhook, json={"content": msg}, timeout=10)
+    requests.post(webhook, json={"content": msg}, timeout=10)
 
 # ============ Run ============
 def single_check():
