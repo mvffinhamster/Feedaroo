@@ -197,7 +197,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
                 print('skipped')
             stats["skipped"] += 1
             continue
-        print(title[:256], "\n", desc_text[:600])
+        print(title[:256], "\n", desc[:600])
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             print('keyword_miss')
