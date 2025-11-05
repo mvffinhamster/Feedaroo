@@ -129,8 +129,9 @@ def is_positive(text, sentiment_analyzer):
         label_osc, prob_osc = result_osc["label"], result_osc["score"]
         label_pia, prop_pia = result_pia["label"], result_pia["score"]
         print(label_osc, label_pia)
+        print(text)
         if label_osc ==  label_pia == "LABEL_0":
-            print(text)
+            #print(text)
             return (prob_osc + prop_pia)/2, True
         return 0, False
         # return pol >= POS_THRESHOLD, pol
