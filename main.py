@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from textblob import TextBlob
 from transformers import pipeline
 from huggingface_hub import login
+from newspaper import Article, Config
 
 # ============ Constants ============
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
@@ -120,19 +121,19 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(text, sentiment_analyzer):
-    if not text:
+def is_positive(url, sentiment_analyzer):
+    full_text = get_article_text_with_user_agent(url)
+    if not full_text:
         return 0, False
     try:
-        result_osc = sentiment_analyzer(text, text_pair="Oscar")[0]
-        result_pia = sentiment_analyzer(text, text_pair="Piastri")[0]
+        result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
+        result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
         label_osc, prob_osc = result_osc["label"], result_osc["score"]
-        label_pia, prop_pia = result_pia["label"], result_pia["score"]
-        print(label_osc, label_pia)
-        print(text)
-        if label_osc ==  label_pia == "LABEL_0":
-            #print(text)
-            return (prob_osc + prop_pia)/2, True
+        label_ln, prop_ln = result_ln["label"], result_ln["score"]
+        if label_osc == "Positive":
+            if (label_ln == "Positive") and (prob_ln > prob_osc):
+                print("warning: LN favor")
+            return prob_osc, True
         return 0, False
         # return pol >= POS_THRESHOLD, pol
     except:
@@ -144,6 +145,20 @@ def contains_any(blob, terms):
 def classify_article(title, desc):
     blob = f"{title} {desc}".lower()
     return contains_any(blob, NEGATIVE_HINTS) and contains_any(blob, OSCAR_TERMS)
+
+def get_article_text_with_user_agent(url):
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    config = Config()
+    config.browser_user_agent = user_agent
+    config.request_timeout = 7
+    article = Article(url, config=config)
+    try:
+        article.download()
+        article.parse()
+        return article.text
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 # ============ Send ============
 def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
@@ -193,13 +208,13 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["negatives"] += 1
             continue
 
-        prob, is_pos = is_positive(desc or title, sentiment_analyzer)
-        if not is_pos or prob < 0.6:
+        prob, is_pos = is_positive(link, sentiment_analyzer)
+        if not is_pos:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
             continue
-       
+       print(title, desc)
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             print('keyword_miss')
             stats["keyword_miss"] += 1
