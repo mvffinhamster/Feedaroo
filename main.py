@@ -223,7 +223,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["oscar_negative"] += 1
             continue
         
-        send_to_discord(title, link, desc, None, emoji)
+        send_to_discord(title, link, desc, None, emoji, warning)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
         time.sleep(DISCORD_RATE_LIMIT_DELAY)
