@@ -164,10 +164,15 @@ def get_article_text_with_user_agent(url):
         return None
 
 # ============ Send ============
-def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
+def send_to_discord(title, link, desc=None, img=None, emoji="🦘", warning=False):
     clean_link = re.sub(r"\?.*", "", link)
     desc_text = f"{clean_desc(desc)}\n\n🔗 {clean_link}"
 
+    if warning == False:
+        content = None
+    else:
+        content = "⚠️ May Contain Norris Favouritism ⚠️"
+        
     embed = {
         "title": f"{emoji} {title}"[:256],
         "url": link,
@@ -179,7 +184,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
     if img:
         embed["image"] = {"url": img}
     print(title[:256], "\n", desc_text[:600])
-    requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
+    requests.post(WEBHOOK, json={"username": BOT_NAME, "content":content, embeds": [embed]}, timeout=10)
 
 # ============ Process ============
 def process_feed(url, sent, stats, sentiment_analyzer):
