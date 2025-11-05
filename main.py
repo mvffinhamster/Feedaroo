@@ -184,7 +184,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘", warning=Fals
     if img:
         embed["image"] = {"url": img}
     print(title[:256], "\n", desc_text[:600])
-    requests.post(WEBHOOK, json={"username": BOT_NAME, "content":content, embeds": [embed]}, timeout=10)
+    requests.post(WEBHOOK, json={"username": BOT_NAME, "content":content, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
 def process_feed(url, sent, stats, sentiment_analyzer):
