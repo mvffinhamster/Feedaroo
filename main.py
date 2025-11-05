@@ -281,7 +281,7 @@ def single_check():
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
-    sentiment_analyzer = pipeline("text-classification", model="alwanrahmana/sentiment-absa-model")
+    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
