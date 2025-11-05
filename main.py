@@ -207,18 +207,19 @@ def process_feed(url, sent, stats, sentiment_analyzer):
                 print('negative')
             stats["negatives"] += 1
             continue
-
+            
+        if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+            print('keyword_miss')
+            stats["keyword_miss"] += 1
+            continue
+            
         prob, is_pos = is_positive(link, sentiment_analyzer)
         if not is_pos:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
             continue
-        print(title, desc)
-        if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
-            print('keyword_miss')
-            stats["keyword_miss"] += 1
-            continue
+        
         print('to discord')
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
