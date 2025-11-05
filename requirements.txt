@@ -1,5 +1,6 @@
 feedparser
 requests
 textblob
+torch --index-url https://download.pytorch.org/whl/cpu
 huggingface_hub
 transformers 
