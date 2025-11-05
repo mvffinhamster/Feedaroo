@@ -192,7 +192,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             continue
 
         prob, is_pos = is_positive(desc or title, sentiment_analyzer)
-        if not is_pos:
+        if not is_pos or prob < POS_THRESHOLD:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
