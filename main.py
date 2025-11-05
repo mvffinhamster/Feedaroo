@@ -129,7 +129,7 @@ def is_positive(text, sentiment_analyzer):
         label_osc, prob_osc = result_osc["label"], result_osc["score"]
         label_pia, prop_pia = result_pia["label"], result_pia["score"]
         print(label_osc, label_pia)
-        if label_osc ==  label_pia == "Positive":
+        if label_osc ==  label_pia == "LABEL_0":
             print(text)
             return (prob_osc + prop_pia)/2, True
         return 0, False
@@ -193,7 +193,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             continue
 
         prob, is_pos = is_positive(desc or title, sentiment_analyzer)
-        if not is_pos or prob < POS_THRESHOLD:
+        if not is_pos or prob < 0.6:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
@@ -265,13 +265,7 @@ def single_check():
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
-    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-base-absa-v1.1")
-    # result = sentiment_analyzer("The food was amazing, but the service was slow.", aspect="service")
-    # print(result)
-    
-    # sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
-    result = sentiment_analyzer("I love Oscar", text_pair="Oscar")
-    print(result)
+    sentiment_analyzer = pipeline("text-classification", model="alwanrahmana/sentiment-absa-model")
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
