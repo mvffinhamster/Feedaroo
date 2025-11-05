@@ -1,7 +1,11 @@
 feedparser
 requests
 textblob
-torch --index-url https://download.pytorch.org/whl/cpu
 huggingface_hub
-transformers
-tiktoken
+transformers 
+torch 
+sentencepiece 
+safetensors
+protobuf
+newspaper3k
+lxml_html_clean

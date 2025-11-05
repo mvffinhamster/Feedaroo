@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from textblob import TextBlob
 from transformers import pipeline
 from huggingface_hub import login
+from newspaper import Article, Config
 
 # ============ Constants ============
 USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
@@ -120,18 +121,26 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(text, sentiment_analyzer):
-    print("check pos")
-    if not text:
-        return False, 0.0
+def is_positive(url, sentiment_analyzer):
+    full_text = get_article_text_with_user_agent(url)
+    if not full_text:
+        return 0, False
     try:
-        pol = TextBlob(text).sentiment.polarity
-        # print("old", pol)
-        result = sentiment_analyzer(text, text_pair="Oscar")
-        # print("new", result)
-        return pol >= POS_THRESHOLD, pol
+        result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
+        result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
+        label_osc, prob_osc = result_osc["label"], result_osc["score"]
+        label_ln, prop_ln = result_ln["label"], result_ln["score"]
+        print(label_osc, prob_osc)
+        print(label_ln, prob_ln)
+        if label_osc == "Positive":
+            print('pos')
+            if (label_ln == "Positive") and (prob_ln > prob_osc):
+                print("warning: LN favor")
+            return prob_osc, True
+        return 0, False
+        # return pol >= POS_THRESHOLD, pol
     except:
-        return False, 0.0
+        return 0, False
 
 def contains_any(blob, terms):
     return any(t in blob for t in terms if t)
@@ -139,6 +148,20 @@ def contains_any(blob, terms):
 def classify_article(title, desc):
     blob = f"{title} {desc}".lower()
     return contains_any(blob, NEGATIVE_HINTS) and contains_any(blob, OSCAR_TERMS)
+
+def get_article_text_with_user_agent(url):
+    user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+    config = Config()
+    config.browser_user_agent = user_agent
+    config.request_timeout = 7
+    article = Article(url, config=config)
+    try:
+        article.download()
+        article.parse()
+        return article.text
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 # ============ Send ============
 def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
@@ -155,7 +178,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 
     if img:
         embed["image"] = {"url": img}
-
+    print(title[:256], "\n", desc_text[:600])
     #requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
@@ -187,20 +210,20 @@ def process_feed(url, sent, stats, sentiment_analyzer):
                 print('negative')
             stats["negatives"] += 1
             continue
-
-        ok_pol, _ = is_positive(desc or title, sentiment_analyzer)
-        if not ok_pol:
+            
+        if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+            print('keyword_miss')
+            stats["keyword_miss"] += 1
+            continue
+            
+        prob, is_pos = is_positive(link, sentiment_analyzer)
+        if not is_pos:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
             continue
-
-        if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
-            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-                print('keyword_miss')
-            stats["keyword_miss"] += 1
-            continue
-
+        
+        print('to discord')
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
@@ -262,13 +285,7 @@ def single_check():
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
-    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-base-absa-v1.1")
-    # result = sentiment_analyzer("The food was amazing, but the service was slow.", aspect="service")
-    # print(result)
-    
-    # sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
-    result = sentiment_analyzer("I love Oscar", text_pair="Oscar")
-    print(result)
+    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
     try:
         for feed_url in FEEDS:
             sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
