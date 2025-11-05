@@ -122,17 +122,20 @@ def find_source_emoji(link):
 
 def is_positive(text, sentiment_analyzer):
     if not text:
-        return False, 0.0
+        return 0, False
     try:
         pol = TextBlob(text).sentiment.polarity
         print("\nold", pol)
-        result_osc = sentiment_analyzer(text, text_pair="Oscar")
-        result_pia = sentiment_analyzer(text, text_pair="Piastri")
-        print("new oscar", result_osc)
-        print("new piastri", result_pia)
-        return pol >= POS_THRESHOLD, pol
+        result_osc = sentiment_analyzer(text, text_pair="Oscar")[0]
+        result_pia = sentiment_analyzer(text, text_pair="Piastri")[0]
+        label_osc, prob_osc = result_osc["label"], result_osc["score"]
+        label_pia, prop_pia = result_pia["label"], result_pia["score"]
+        if label_osc ==  label_pia == "Positive":
+            return (prob_osc + prop_pia)/2, True
+        return 0, False
+        # return pol >= POS_THRESHOLD, pol
     except:
-        return False, 0.0
+        return 0, False
 
 def contains_any(blob, terms):
     return any(t in blob for t in terms if t)
@@ -156,7 +159,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘"):
 
     if img:
         embed["image"] = {"url": img}
-
+    print(title[:256], "\n", desc_text[:600])
     #requests.post(WEBHOOK, json={"username": BOT_NAME, "embeds": [embed]}, timeout=10)
 
 # ============ Process ============
@@ -189,12 +192,13 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["negatives"] += 1
             continue
 
-        ok_pol, _ = is_positive(desc or title, sentiment_analyzer)
-        if not ok_pol:
+        prob, is_pos = is_positive(desc or title, sentiment_analyzer)
+        if not is_pos:
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
                 print('skipped')
             stats["skipped"] += 1
             continue
+    
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
             if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
