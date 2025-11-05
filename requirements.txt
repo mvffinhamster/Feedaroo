@@ -2,4 +2,7 @@ feedparser
 requests
 textblob
 huggingface_hub
-transformers[torch]
+transformers 
+torch 
+sentencepiece 
+safetensors
