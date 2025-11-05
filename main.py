@@ -127,7 +127,7 @@ def is_positive(text, sentiment_analyzer):
     try:
         pol = TextBlob(text).sentiment.polarity
         # print("old", pol)
-        result = sentiment_analyzer(text, aspect="Oscar")
+        result = sentiment_analyzer(text, text_pair="Oscar")
         # print("new", result)
         return pol >= POS_THRESHOLD, pol
     except:
@@ -262,12 +262,12 @@ def single_check():
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "skipped": 0, "dupes": 0, "keyword_miss": 0, "negatives": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
-    sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
-    result = sentiment_analyzer("The food was amazing, but the service was slow.", aspect="service")
-    print(result)
+    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-base-absa-v1.1")
+    # result = sentiment_analyzer("The food was amazing, but the service was slow.", aspect="service")
+    # print(result)
     
-    sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
-    result = sentiment_analyzer("I love Oscar", aspect="Oscar")
+    # sentiment_analyzer = pipeline("text-classification", model="srimeenakshiks/aspect-based-sentiment-analyzer-using-bert")
+    result = sentiment_analyzer("I love Oscar", text_pair="Oscar")
     print(result)
     try:
         for feed_url in FEEDS:
