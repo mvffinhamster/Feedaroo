@@ -124,12 +124,11 @@ def is_positive(text, sentiment_analyzer):
     if not text:
         return 0, False
     try:
-        pol = TextBlob(text).sentiment.polarity
-        print("\nold", pol)
         result_osc = sentiment_analyzer(text, text_pair="Oscar")[0]
         result_pia = sentiment_analyzer(text, text_pair="Piastri")[0]
         label_osc, prob_osc = result_osc["label"], result_osc["score"]
         label_pia, prop_pia = result_pia["label"], result_pia["score"]
+        print(label_osc, label_pia)
         if label_osc ==  label_pia == "Positive":
             return (prob_osc + prop_pia)/2, True
         return 0, False
@@ -198,14 +197,13 @@ def process_feed(url, sent, stats, sentiment_analyzer):
                 print('skipped')
             stats["skipped"] += 1
             continue
-    
+        print(title[:256], "\n", desc_text[:600])
 
         if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
-            if entry_id == "eee33324857e5082a926d7ab0e576903950b60fa2369abf83d540f6bbefb8db5":
-                print('keyword_miss')
+            print('keyword_miss')
             stats["keyword_miss"] += 1
             continue
-
+        print('to discord')
         send_to_discord(title, link, desc, None, emoji)
         sent[entry_id] = datetime.now().isoformat()
         stats["posted"] += 1
