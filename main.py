@@ -222,6 +222,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             
         if not is_pos:
             stats["oscar_negative"] += 1
+            sent[entry_id] = datetime.now().isoformat()
             continue
         
         send_to_discord(title, link, desc, None, emoji, warning)
