@@ -128,12 +128,13 @@ def is_positive(url, sentiment_analyzer):
         return 0, False, False
     try:
         result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
-        result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
         label_osc, prob_osc = result_osc["label"], result_osc["score"]
-        label_ln, prob_ln = result_ln["label"], result_ln["score"]
+        
         print(label_osc, prob_osc)
-        print(label_ln, prob_ln)
         if label_osc == "Positive":
+            result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
+            label_ln, prob_ln = result_ln["label"], result_ln["score"]
+            print(label_ln, prob_ln)
             if (label_ln == "Positive") and (prob_ln > prob_osc):
                 print("warning: LN favor")
                 warning = True
