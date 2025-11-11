@@ -284,7 +284,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 def single_check():
     sent = cleanup_sent(load_sent())
     login(token=HUGGINGFACE)
-    print("sent", sent)
+    # print("sent", sent)
     stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "LN_bias": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
@@ -299,7 +299,7 @@ def single_check():
         send_telemetry(stats, run_type, memory_count, status)
         
         sent = cleanup_sent(load_sent())
-        print("final sent", sent)
+        # print("final sent", sent)
     except Exception as e:
         err_text = str(e).split("\n")[0]
         send_telemetry(stats, run_type, len(sent), status="fail", error=err_text)
