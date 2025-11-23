@@ -224,6 +224,11 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["oscar_negative"] += 1
             sent[entry_id] = datetime.now().isoformat()
             continue
+
+        if prob<0.5:
+            stats["oscar_not_pos"] += 1
+            sent[entry_id] = datetime.now().isoformat()
+            continue
         
         send_to_discord(title, link, desc, None, emoji, warning)
         sent[entry_id] = datetime.now().isoformat()
@@ -254,9 +259,11 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         keyword_miss = stats["keyword_miss"]
         # negatives = stats["negatives"]
         LN_bias = stats["LN_bias"]
+        oscar_not_pos = stats["oscar_not_pos"]
 
         dupes_line = f"☑️ Duplicates: {dupes}" if dupes > 0 else "☑️ No duplicates found"
         neg_line = f"🚫 Oscar Negative: {oscar_negative}" if oscar_negative > 0 else "🚫 No negative articles found"
+        iffy_line = f"❗Not Postive Enough: {oscar_not_pos}" if oscar_not_pos > 0 else "❗No less positive articles found"
         bias_line = f"⚠️ Lando Bias: {LN_bias}" if LN_bias > 0 else "⚠️ No articles favouring Lando found"
         mem_line = (
             f"🧠 Memory updated — **{posted} new** entries saved (Articles in memory: {memory_count})"
@@ -272,6 +279,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"{dupes_line}\n"
             f"#️⃣ No Keyword Match: {keyword_miss}\n"
             f"{neg_line}\n"
+            f"{iffy_line}\n"
             f"{bias_line}\n"
             f"{mem_line}\n\n"
             "*Copy that, Feedaroo. Telemetry clean, keep going.*"
@@ -285,7 +293,7 @@ def single_check():
     sent = cleanup_sent(load_sent())
     login(token=HUGGINGFACE)
     # print("sent", sent)
-    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "LN_bias": 0}
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "LN_bias": 0, "oscar_not_pos": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
