@@ -27,6 +27,7 @@ SOURCE_EMOJIS = {
     "smh.com.au": "⚫️"
 }
 
+BLACKLIST = ["Full Credit to the Noise"]
 
 # ============ Config / env ============
 def load_env():
@@ -148,7 +149,7 @@ def contains_any(blob, terms):
 
 def classify_article(title, desc):
     blob = f"{title} {desc}".lower()
-    return contains_any(blob, NEGATIVE_HINTS) and contains_any(blob, OSCAR_TERMS)
+    return contains_any(blob, BLACKLIST)
 
 def get_article_text_with_user_agent(url):
     user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
@@ -211,10 +212,10 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["keyword_miss"] += 1
             continue   
             
-        # if classify_article(title, desc):
-        #     stats["negatives"] += 1
-        #     print('neg')
-            # continue
+        if classify_article(title, desc):
+            stats["blacklist"] += 1
+            print('blacklist')
+            continue
             
         prob, is_pos, warning = is_positive(link, sentiment_analyzer)
         if warning:
@@ -257,18 +258,19 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
         oscar_negative = stats["oscar_negative"]
         dupes = stats["dupes"]
         keyword_miss = stats["keyword_miss"]
-        # negatives = stats["negatives"]
+        blacklist = stats["blacklist"]
         LN_bias = stats["LN_bias"]
         oscar_not_pos = stats["oscar_not_pos"]
 
         dupes_line = f"☑️ Duplicates: {dupes}" if dupes > 0 else "☑️ No duplicates found"
+        blacklist_line = f"🚨 Blacklisted: {blacklist}" if blacklist > 0 else "🚨 No blacklisted terms found"
         neg_line = f"🚫 Oscar Negative: {oscar_negative}" if oscar_negative > 0 else "🚫 No negative articles found"
         iffy_line = f"❗Not Postive Enough: {oscar_not_pos}" if oscar_not_pos > 0 else "❗No less positive articles found"
         bias_line = f"⚠️ Lando Bias: {LN_bias}" if LN_bias > 0 else "⚠️ No articles favouring Lando found"
         mem_line = (
             f"🧠 Memory updated — **{posted} new** entries saved (Articles in memory: {memory_count})"
             if posted > 0 else
-            f"🧠 Memory clean. No new articles. (**{memory_count} already saved.**)"
+            f"🧠 Memory clean. No new articles. ({memory_count} already saved.)"
         )
 
         msg = (
@@ -278,6 +280,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
             f"✅ Posted: {posted}\n"
             f"{dupes_line}\n"
             f"#️⃣ No Keyword Match: {keyword_miss}\n"
+            f"{blacklist_line}\n"
             f"{neg_line}\n"
             f"{iffy_line}\n"
             f"{bias_line}\n"
@@ -293,7 +296,7 @@ def single_check():
     sent = cleanup_sent(load_sent())
     login(token=HUGGINGFACE)
     # print("sent", sent)
-    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0, "LN_bias": 0, "oscar_not_pos": 0}
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0,"blacklist":0, "LN_bias": 0, "oscar_not_pos": 0}
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
