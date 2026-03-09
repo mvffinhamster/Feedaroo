@@ -27,7 +27,7 @@ SOURCE_EMOJIS = {
     "smh.com.au": "⚫️"
 }
 
-BLACKLIST = ["full credit to the noise"]
+BLACKLIST = ["full credit to the noise", "crash"]
 
 # ============ Config / env ============
 def load_env():
