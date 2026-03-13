@@ -226,7 +226,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             sent[entry_id] = datetime.now().isoformat()
             continue
 
-        if prob<0.5:
+        if prob<0.6:
             stats["oscar_not_pos"] += 1
             sent[entry_id] = datetime.now().isoformat()
             continue
