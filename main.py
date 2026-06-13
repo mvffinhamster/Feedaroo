@@ -63,7 +63,7 @@ POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
 DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
-OSCAR_TERMS    = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri"]
+OSCAR_TERMS    = [k for k in KEYWORDS if k] or ["oscar", "piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
 # ============ Debug ============
@@ -140,6 +140,12 @@ def is_positive(url, sentiment_analyzer):
                 print("warning: LN favor")
                 warning = True
             return prob_osc, True, warning
+
+        result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
+        label_jack, prob_jack = result_jack["label"], result_jack["score"]
+        if label_jack == "Positive":
+            return prob_jack, True, warning
+            
         return 0, False, warning
     except:
         return 0, False, False
@@ -208,7 +214,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             stats["dupes"] += 1
             continue
             
-        if KEYWORDS and not any(k in title.lower() for k in KEYWORDS):
+        if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
             stats["keyword_miss"] += 1
             continue   
             
