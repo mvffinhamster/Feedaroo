@@ -66,6 +66,7 @@ NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
+print(FEEDS)
 # ============ Debug ============
 def dbg(msg):
     if not DEBUG:
@@ -215,8 +216,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             continue
             
         if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
-            stats["keyword_miss"] += 1
-            print('miss: ',title)
+            stats["keyword_miss"] += 1s
             continue
         print('hit: ',title)
             
