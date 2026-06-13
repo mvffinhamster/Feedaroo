@@ -214,6 +214,8 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
         driver = 'OP'
+        not_osc = False
+        not_jack = False
         
         if not title or not link:
             continue
