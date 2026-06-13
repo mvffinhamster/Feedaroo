@@ -317,7 +317,8 @@ def single_check():
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
-    
+    print('ready')
+    print(FEEDS)
     try:
         print(FEEDS)
         for feed_url in FEEDS:
