@@ -312,7 +312,7 @@ def single_check():
     print('312')
     
     # sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
-    sentiment_analyzer = []
+    sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-base-absa-v1.1")
     
     print('ready')
 
