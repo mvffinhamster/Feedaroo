@@ -74,7 +74,7 @@ FEEDS = ['https://www.speedcafe.com/feed',
          'https://au.motorsport.com/rss/wec/news/', 
          'https://www.foxsports.com.au/content-feeds/motorsport/']
 
-print(FEEDS)
+
 # ============ Debug ============
 def dbg(msg):
     if not DEBUG:
