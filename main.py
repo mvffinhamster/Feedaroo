@@ -65,14 +65,14 @@ LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
-FEEDS = ['https://www.speedcafe.com/feed', 
+FEEDS = get_list_env(['https://www.speedcafe.com/feed', 
          'https://au.motorsport.com/rss/f1/news/', 
          'https://www.news.com.au/content-feeds/latest-news-sport', 
          'https://www.foxsports.com.au/content-feeds/motorsport/formula-one', 
          'https://www.abc.net.au/news/feed/46034/rss.xml', 
          'https://www.theage.com.au/rss/sport/motorsport.xml', 
          'https://au.motorsport.com/rss/wec/news/', 
-         'https://www.foxsports.com.au/content-feeds/motorsport/']
+         'https://www.foxsports.com.au/content-feeds/motorsport/'], [])
 
 
 # ============ Debug ============
