@@ -207,7 +207,7 @@ def send_to_discord(title, link, desc=None, img=None, emoji="🦘", warning=Fals
 def process_feed(url, sent, stats, sentiment_analyzer):
     # print("process_feed sent", sent)
     feed = feedparser.parse(url, request_headers=USER_AGENT)
-    
+    print(url)
     for entry in getattr(feed, "entries", []):
         stats["entries"] += 1
         title = (getattr(entry, "title", "") or "").strip()
