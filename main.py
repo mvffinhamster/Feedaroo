@@ -63,7 +63,8 @@ POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
 DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
-OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan", "doohan"]
+OSCAR_TERMS    = ["piastri", "oscar piastri"]
+JACK_TERMS     = ["jack doohan", "doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
 
@@ -124,31 +125,34 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(url, sentiment_analyzer):
+def is_positive(url, sentiment_analyzer, driver):
     full_text = get_article_text_with_user_agent(url)
     warning = False
     if not full_text:
         return 0, False, False
     try:
-        result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
-        label_osc, prob_osc = result_osc["label"], result_osc["score"]
-        
-        print(label_osc, prob_osc)
-        if label_osc == "Positive":
-            result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
-            label_ln, prob_ln = result_ln["label"], result_ln["score"]
-            print(label_ln, prob_ln)
-            if (label_ln == "Positive") and (prob_ln > prob_osc):
-                print("warning: LN favor")
-                warning = True
-            return prob_osc, True, warning
-
-        result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
-        label_jack, prob_jack = result_jack["label"], result_jack["score"]
-        if label_jack == "Positive":
-            return prob_jack, True, warning
+        if driver == 'OP':
+            result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
+            label_osc, prob_osc = result_osc["label"], result_osc["score"]
             
-        return 0, False, warning
+            print(label_osc, prob_osc)
+            if label_osc == "Positive":
+                result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
+                label_ln, prob_ln = result_ln["label"], result_ln["score"]
+                print(label_ln, prob_ln)
+                if (label_ln == "Positive") and (prob_ln > prob_osc):
+                    print("warning: LN favor")
+                    warning = True
+                return prob_osc, True, warning
+            return 0, False, warning
+
+        if driver == 'JD':
+            result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
+            label_jack, prob_jack = result_jack["label"], result_jack["score"]
+            if label_jack == "Positive":
+                return prob_jack, True, False
+            return 0, False, False
+        return 0, False, False
     except:
         return 0, False, False
 
@@ -209,7 +213,8 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
-            
+        driver = 'OP'
+        
         if not title or not link:
             continue
         if entry_id in sent:
@@ -217,16 +222,23 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             continue
             
         if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
+            not_osc = True
+            driver = 'JD'
+
+        if JACK_TERMS and not any(k in title.lower() for k in JACK_TERMS):
+            not_jack = True
+
+        if (not_osc and not_jack):
             stats["keyword_miss"] += 1
             continue
-        print('hit: ',title)
+        print('hit: ',driver, title)
             
         if classify_article(title, desc):
             stats["blacklist"] += 1
             print('blacklist')
             continue
             
-        prob, is_pos, warning = is_positive(link, sentiment_analyzer)
+        prob, is_pos, warning = is_positive(link, sentiment_analyzer, driver)
         if warning:
             stats["LN_bias"] += 1
             
