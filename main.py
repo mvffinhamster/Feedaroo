@@ -216,7 +216,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             continue
             
         if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
-            stats["keyword_miss"] += 1s
+            stats["keyword_miss"] += 1
             continue
         print('hit: ',title)
             
