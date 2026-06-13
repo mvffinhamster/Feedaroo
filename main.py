@@ -53,7 +53,7 @@ load_env()
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
 LOG_WEBHOOK    = os.getenv("LOG_WEBHOOK", "").strip()
-FEEDS          = get_list_env("FEEDS", [])
+# FEEDS          = get_list_env("FEEDS", [])
 KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]
 CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
 BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
@@ -65,14 +65,14 @@ LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
-# FEEDS = get_list_env(['https://www.speedcafe.com/feed', 
-#          'https://au.motorsport.com/rss/f1/news/', 
-#          'https://www.news.com.au/content-feeds/latest-news-sport', 
-#          'https://www.foxsports.com.au/content-feeds/motorsport/formula-one', 
-#          'https://www.abc.net.au/news/feed/46034/rss.xml', 
-#          'https://www.theage.com.au/rss/sport/motorsport.xml', 
-#          'https://au.motorsport.com/rss/wec/news/', 
-#          'https://www.foxsports.com.au/content-feeds/motorsport/'], [])
+FEEDS = ["https://www.speedcafe.com/feed",
+         "https://au.motorsport.com/rss/f1/news/",
+         "https://www.news.com.au/content-feeds/latest-news-sport",
+         "https://www.foxsports.com.au/content-feeds/motorsport/formula-one",
+         "https://www.abc.net.au/news/feed/46034/rss.xml",
+         "https://www.theage.com.au/rss/sport/motorsport.xml",
+         "https://au.motorsport.com/rss/wec/news/",
+         "https://www.foxsports.com.au/content-feeds/motorsport/"]
 
 
 # ============ Debug ============
@@ -309,6 +309,7 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 
 # ============ Run ============
 def single_check():
+    print('open single_check')
     sent = cleanup_sent(load_sent())
     login(token=HUGGINGFACE)
     # print("sent", sent)
@@ -316,6 +317,7 @@ def single_check():
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
+    
     try:
         print(FEEDS)
         for feed_url in FEEDS:
