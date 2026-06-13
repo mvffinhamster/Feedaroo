@@ -317,7 +317,9 @@ def single_check():
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
     try:
+        print(FEEDS)
         for feed_url in FEEDS:
+            print(feed_url)
             sent = process_feed(feed_url, sent, stats, sentiment_analyzer)
         # print("returned sent", sent)
         save_sent(sent)
