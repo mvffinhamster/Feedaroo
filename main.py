@@ -65,14 +65,7 @@ LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
-FEEDS = ["https://www.speedcafe.com/feed",
-         "https://au.motorsport.com/rss/f1/news/",
-         "https://www.news.com.au/content-feeds/latest-news-sport",
-         "https://www.foxsports.com.au/content-feeds/motorsport/formula-one",
-         "https://www.abc.net.au/news/feed/46034/rss.xml",
-         "https://www.theage.com.au/rss/sport/motorsport.xml",
-         "https://au.motorsport.com/rss/wec/news/",
-         "https://www.foxsports.com.au/content-feeds/motorsport/"]
+
 
 
 # ============ Debug ============
@@ -317,7 +310,17 @@ def single_check():
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
+    
     print('ready')
+
+    FEEDS = ["https://www.speedcafe.com/feed",
+         "https://au.motorsport.com/rss/f1/news/",
+         "https://www.news.com.au/content-feeds/latest-news-sport",
+         "https://www.foxsports.com.au/content-feeds/motorsport/formula-one",
+         "https://www.abc.net.au/news/feed/46034/rss.xml",
+         "https://www.theage.com.au/rss/sport/motorsport.xml",
+         "https://au.motorsport.com/rss/wec/news/",
+         "https://www.foxsports.com.au/content-feeds/motorsport/"]
     print(FEEDS)
     try:
         print(FEEDS)
