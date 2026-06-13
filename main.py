@@ -304,11 +304,13 @@ def send_telemetry(stats, run_type, memory_count, status="success", error=None):
 def single_check():
     print('open single_check')
     sent = cleanup_sent(load_sent())
+    print('307')
     login(token=HUGGINGFACE)
-    # print("sent", sent)
+    print('309')
     
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
-
+    print('312')
+    
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
     
     print('ready')
