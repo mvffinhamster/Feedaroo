@@ -216,7 +216,9 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             
         if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
             stats["keyword_miss"] += 1
-            continue   
+            print('miss: ',title)
+            continue
+        print('hit: ',title)
             
         if classify_article(title, desc):
             stats["blacklist"] += 1
