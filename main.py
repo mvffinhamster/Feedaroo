@@ -63,9 +63,10 @@ POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
 DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
-OSCAR_TERMS    = [k for k in KEYWORDS if k, "oscar", "piastri", "oscar piastri", "jack doohan"]
+OSCAR_TERMS    = ["piastri", "oscar piastri", "jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
+print(FEEDS)
 # ============ Debug ============
 def dbg(msg):
     if not DEBUG:
@@ -216,7 +217,8 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             
         if OSCAR_TERMS and not any(k in title.lower() for k in OSCAR_TERMS):
             stats["keyword_miss"] += 1
-            continue   
+            continue
+        print('hit: ',title)
             
         if classify_article(title, desc):
             stats["blacklist"] += 1
