@@ -306,7 +306,7 @@ def single_check():
     sent = cleanup_sent(load_sent())
     login(token=HUGGINGFACE)
     # print("sent", sent)
-    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0,"blacklist":0, "LN_bias": 0, "oscar_not_pos": 0}
+    
     run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
 
     sentiment_analyzer = pipeline("text-classification", model="yangheng/deberta-v3-large-absa-v1.1")
@@ -322,6 +322,7 @@ def single_check():
          "https://au.motorsport.com/rss/wec/news/",
          "https://www.foxsports.com.au/content-feeds/motorsport/"]
     print(FEEDS)
+    stats = {"feeds": len(FEEDS), "entries": 0, "posted": 0, "oscar_negative": 0, "dupes": 0, "keyword_miss": 0,"blacklist":0, "LN_bias": 0, "oscar_not_pos": 0}
     try:
         print(FEEDS)
         for feed_url in FEEDS:
