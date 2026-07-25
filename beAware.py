@@ -37,6 +37,8 @@ load_env()
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
 LOG_WEBHOOK    = os.getenv("LOG_WEBHOOK", "").strip()
+KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
 BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
 
 
@@ -60,5 +62,6 @@ def send_telemetry():
     requests.post(webhook, json={"content": msg}, timeout=10)
 
 if __name__ == "__main__":
+    run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     send_to_discord()
     send_telemetry()
