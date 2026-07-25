@@ -37,11 +37,15 @@ jobs:
           key: feedaroo-sent-db-global-$(( github.run_number - 1 ))
           restore-keys: |
             feedaroo-sent-db-global-
+      - if: ${{ steps.restore-db.outputs.cache-hit != 'true' }}
+        name: Failure Restore
+        run: python beAware.py
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 🚀 Run Feedaroo (single check)
+      - if: ${{ steps.restore-db.outputs.cache-hit == 'true' }}
+        name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
           LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
