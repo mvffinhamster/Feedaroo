@@ -63,8 +63,8 @@ POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
 DEBUG          = os.getenv("DEBUG", "0") == "1"
 LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
 NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
-OSCAR_TERMS    = ["piastri", "oscar piastri"]
-JACK_TERMS     = ["jack doohan", "doohan"]
+OSCAR_TERMS    = ["oscar piastri"]
+JACK_TERMS     = ["jack doohan"]
 HUGGINGFACE    = os.getenv("HUGGINGFACE", "").strip()
 
 
