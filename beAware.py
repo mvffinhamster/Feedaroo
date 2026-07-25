@@ -37,7 +37,15 @@ load_env()
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
 LOG_WEBHOOK    = os.getenv("LOG_WEBHOOK", "").strip()
+KEYWORDS       = [k.lower() for k in get_list_env("KEYWORDS", [])]
+CHECK_INTERVAL = int(os.getenv("CHECK_INTERVAL_MINUTES", "15")) * 60
 BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
+SENT_DB        = os.getenv("SENT_DB", "sent_feedaroo.json")
+NEW_SENT_DB    = os.getenv("NEW_SENT_DB", "sent_feedaroo.json")
+POS_THRESHOLD  = float(os.getenv("POS_THRESHOLD", "0.15"))
+DEBUG          = os.getenv("DEBUG", "0") == "1"
+LOG_FILE       = os.getenv("LOG_FILE", "feedaroo_debug.log")
+NEGATIVE_HINTS = [s.lower() for s in get_list_env("NEGATIVE_HINTS", [])]
 
 
 # ============ Send ============
