@@ -68,5 +68,6 @@ def send_telemetry():
     requests.post(webhook, json={"content": msg}, timeout=10)
 
 if __name__ == "__main__":
+    run_type = "Manual" if os.getenv("GITHUB_EVENT_NAME") == "workflow_dispatch" else "Scheduled"
     send_to_discord()
     send_telemetry()
