@@ -43,7 +43,7 @@ BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
 # ============ Send ============
 def send_to_discord():
     content = "Caution: 🦘 Feedaroo had an issue with his cache...\nHe may need help, idk"
-    requests.post(WEBHOOK, json={"username": BOT_NAME, "content":content}, timeout=10)
+    requests.post(WEBHOOK, json={"username": "Feedaroo 🦘", "content":content}, timeout=10)
     time.sleep(DISCORD_RATE_LIMIT_DELAY)
 
 # ============ Telemetry ============
