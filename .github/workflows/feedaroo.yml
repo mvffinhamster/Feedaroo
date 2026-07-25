@@ -43,6 +43,12 @@ jobs:
 
       - if: ${{ steps.restore-db.outputs.cache-hit == '' }}
         name: Failure Restore
+        env:
+          WEBHOOK:         ${{ secrets.WEBHOOK }}
+          LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
+          FEEDS:           ${{ secrets.FEEDS }}
+          KEYWORDS:        ${{ secrets.KEYWORDS }}
+          BOT_NAME:        ${{ secrets.BOT_NAME }}
         run: python beAware.py
         
       - if: ${{ steps.restore-db.outputs.cache-hit != ''}}
