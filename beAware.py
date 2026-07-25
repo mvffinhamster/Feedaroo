@@ -12,17 +12,6 @@ MAX_SENT_ENTRIES = 10000
 SENT_EXPIRY_DAYS = 30
 DISCORD_RATE_LIMIT_DELAY = 2
 
-SOURCE_EMOJIS = {
-    "speedcafe.com": "🟢",
-    "motorsport.com": "🟡",
-    "news.com.au": "🔵",
-    "foxsports.com.au": "🔴",
-    "abc.net.au": "⚪️",
-    "theage.com.au": "🟣",
-    "smh.com.au": "⚫️"
-}
-
-BLACKLIST = ["full credit to the noise", "crash"]
 
 # ============ Config / env ============
 def load_env():
@@ -48,12 +37,13 @@ load_env()
 
 WEBHOOK        = os.getenv("WEBHOOK", "").strip()
 LOG_WEBHOOK    = os.getenv("LOG_WEBHOOK", "").strip()
+BOT_NAME       = os.getenv("BOT_NAME", "Feedaroo 🦘")
 
 
 # ============ Send ============
 def send_to_discord():
     content = "Caution: 🦘 Feedaroo had an issue with his cache...\nHe may need help, idk"
-    requests.post(WEBHOOK, json={"username": BOT_NAME, "content":content}, timeout=10)
+    requests.post(WEBHOOK, json={"username": "Feedaroo 🦘", "content":content}, timeout=10)
     time.sleep(DISCORD_RATE_LIMIT_DELAY)
 
 # ============ Telemetry ============
