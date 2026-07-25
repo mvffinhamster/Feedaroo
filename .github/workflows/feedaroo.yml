@@ -41,11 +41,11 @@ jobs:
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
 
-      - if: ${{ steps.restore-db.outputs.cache-hit != 'true' }}
+      - if: ${{ steps.restore-db.outputs.cache-hit == '' }}
         name: Failure Restore
         run: python beAware.py
         
-      - if: ${{ steps.restore-db.outputs.cache-hit == 'true' }}
+      - if: ${{ steps.restore-db.outputs.cache-hit != ''}}
         name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
