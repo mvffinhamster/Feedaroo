@@ -14,7 +14,7 @@ USER_AGENT = {"User-Agent": "Feedaroo/2.0 (+https://github.com/feedaroo)"}
 EMBED_COLOR = 0xFF9900
 MAX_DESC_LENGTH = 300
 MAX_SENT_ENTRIES = 10000
-SENT_EXPIRY_DAYS = 30
+SENT_EXPIRY_DAYS = 90
 DISCORD_RATE_LIMIT_DELAY = 2
 
 SOURCE_EMOJIS = {
@@ -97,6 +97,7 @@ def save_sent(sent):
 
 def cleanup_sent(sent):
     cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
+    print("removing", len({k: v for k, v in sent.items() if datetime.fromisoformat(v) <= cutoff},"items")
     return {k: v for k, v in sent.items() if datetime.fromisoformat(v) > cutoff}
 
 # ============ Helpers ============
