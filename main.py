@@ -229,6 +229,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         title = (getattr(entry, "title", "") or "").strip()
         link = (getattr(entry, "link", "") or "").strip()
         desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
+        desc = clean_desc(desc)
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
