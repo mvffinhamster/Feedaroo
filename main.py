@@ -179,7 +179,7 @@ def contains_any(blob, terms):
 def classify_article(title, desc):
     blob = f"{title} {desc}".lower()
     if contains_any(blob, BLACKLIST):
-        print((t in blob for t in BLACKLIST if t))
+        print([t for t in terms if t and t in blob])
     return contains_any(blob, BLACKLIST)
 
 def get_article_text_with_user_agent(url):
