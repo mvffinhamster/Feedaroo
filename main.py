@@ -136,12 +136,14 @@ def is_positive(url, sentiment_analyzer, driver,  title, desc):
             print(f"{title} {desc}")
             first_check_osc = sentiment_analyzer(f"{title} {desc}", text_pair="Oscar Piastri")[0]
             print(first_check_osc)
+            if first_check_osc["label"] == "Negative":
+                print("Saved you!")
+                return 0, False, warning
+                
             result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
             print(result_osc)
             label_osc, prob_osc = result_osc["label"], result_osc["score"]
-            return 0, False, warning
-            
-            print(label_osc, prob_osc)
+
             if label_osc == "Positive":
                 result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
                 label_ln, prob_ln = result_ln["label"], result_ln["score"]
@@ -156,10 +158,14 @@ def is_positive(url, sentiment_analyzer, driver,  title, desc):
             print(f"{title} {desc}")
             first_check_jack = sentiment_analyzer(f"{title} {desc}", text_pair="Jack Doohan")[0]
             print(first_check_jack)
+            if first_check_jack["label"] == "Negative":
+                print("Saved you!")
+                return 0, False, False
+                
             result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
             print(result_jack)
-            return 0, False, False
             label_jack, prob_jack = result_jack["label"], result_jack["score"]
+            
             if label_jack == "Positive":
                 return prob_jack, True, False
             return 0, False, False
