@@ -255,6 +255,8 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         print('hit: ',driver, title)
             
         if classify_article(title, desc):
+            print(title)
+            print(desc)
             stats["blacklist"] += 1
             print('blacklist')
             continue
