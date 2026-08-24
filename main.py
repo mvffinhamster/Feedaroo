@@ -126,7 +126,7 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(url, sentiment_analyzer, driver):
+def is_positive(url, sentiment_analyzer, driver,  title, desc):
     full_text = get_article_text_with_user_agent(url)
     warning = False
     if not full_text:
@@ -134,6 +134,9 @@ def is_positive(url, sentiment_analyzer, driver):
     try:
         print(full_text)
         if driver == 'OP':
+            first_check_osc = sentiment_analyzer(f"{title} {desc}", text_pair="Oscar Piastri")[0]
+            print(first_check_osc)
+            return 0, False, warning
             result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
             label_osc, prob_osc = result_osc["label"], result_osc["score"]
             
@@ -244,7 +247,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
             print('blacklist')
             continue
             
-        prob, is_pos, warning = is_positive(link, sentiment_analyzer, driver)
+        prob, is_pos, warning = is_positive(link, sentiment_analyzer, driver, title, desc)
         if warning:
             stats["LN_bias"] += 1
             
