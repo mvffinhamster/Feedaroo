@@ -34,25 +34,25 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: sent_feedaroo.json
-          key: feedaroo-sent-db-global-7774
-          restore-keys: |
-            feedaroo-sent-db-global
+          key: feedaroo-sent-db-global-0
+          # restore-keys: |
+          #   feedaroo-sent-db-global
 
       - name: 📚 Install dependencies
         run: pip install -r requirements.txt
 
-      - if: ${{ steps.restore-db.outputs.cache-hit == '' }}
-        name: Failure Restore
-        env:
-          WEBHOOK:         ${{ secrets.WEBHOOK }}
-          LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
-          FEEDS:           ${{ secrets.FEEDS }}
-          KEYWORDS:        ${{ secrets.KEYWORDS }}
-          BOT_NAME:        ${{ secrets.BOT_NAME }}
-        run: python beAware.py
+      # - if: ${{ steps.restore-db.outputs.cache-hit == '' }}
+      #   name: Failure Restore
+      #   env:
+      #     WEBHOOK:         ${{ secrets.WEBHOOK }}
+      #     LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
+      #     FEEDS:           ${{ secrets.FEEDS }}
+      #     KEYWORDS:        ${{ secrets.KEYWORDS }}
+      #     BOT_NAME:        ${{ secrets.BOT_NAME }}
+      #   run: python beAware.py
         
-      - if: ${{ steps.restore-db.outputs.cache-hit != ''}}
-        name: 🚀 Run Feedaroo (single check)
+      # - if: ${{ steps.restore-db.outputs.cache-hit != ''}}
+      - name: 🚀 Run Feedaroo (single check)
         env:
           WEBHOOK:         ${{ secrets.WEBHOOK }}
           LOG_WEBHOOK:     ${{ secrets.LOG_WEBHOOK }}
