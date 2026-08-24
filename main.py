@@ -97,7 +97,7 @@ def save_sent(sent):
 
 def cleanup_sent(sent):
     cutoff = datetime.now() - timedelta(days=SENT_EXPIRY_DAYS)
-    print("removing", len({k: v for k, v in sent.items() if datetime.fromisoformat(v) <= cutoff},"items")
+    print("removing", len({k: v for k, v in sent.items() if datetime.fromisoformat(v) <= cutoff}),"items")
     return {k: v for k, v in sent.items() if datetime.fromisoformat(v) > cutoff}
 
 # ============ Helpers ============
