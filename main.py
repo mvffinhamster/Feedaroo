@@ -153,7 +153,12 @@ def is_positive(url, sentiment_analyzer, driver,  title, desc):
             return 0, False, warning
 
         if driver == 'JD':
+            print(f"{title} {desc}")
+            first_check_jack = sentiment_analyzer(f"{title} {desc}", text_pair="Jack Doohan")[0]
+            print(first_check_jack)
             result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
+            print(result_jack)
+            return 0, False, False
             label_jack, prob_jack = result_jack["label"], result_jack["score"]
             if label_jack == "Positive":
                 return prob_jack, True, False
