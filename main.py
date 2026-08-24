@@ -132,13 +132,14 @@ def is_positive(url, sentiment_analyzer, driver,  title, desc):
     if not full_text:
         return 0, False, False
     try:
-        print(full_text)
         if driver == 'OP':
+            print(f"{title} {desc}")
             first_check_osc = sentiment_analyzer(f"{title} {desc}", text_pair="Oscar Piastri")[0]
             print(first_check_osc)
-            return 0, False, warning
             result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
+            print(result_osc)
             label_osc, prob_osc = result_osc["label"], result_osc["score"]
+            return 0, False, warning
             
             print(label_osc, prob_osc)
             if label_osc == "Positive":
