@@ -126,17 +126,24 @@ def find_source_emoji(link):
             return e
     return "🦘"
 
-def is_positive(url, sentiment_analyzer, driver):
+def is_positive(url, sentiment_analyzer, driver,  title, desc):
     full_text = get_article_text_with_user_agent(url)
     warning = False
     if not full_text:
         return 0, False, False
     try:
         if driver == 'OP':
+            print(f"{title} {desc}")
+            first_check_osc = sentiment_analyzer(f"{title} {desc}", text_pair="Oscar Piastri")[0]
+            print(first_check_osc)
+            if first_check_osc["label"] == "Negative" and first_check_osc["score"]>=0.6:
+                print("Saved you!")
+                return 0, False, warning
+                
             result_osc = sentiment_analyzer(full_text, text_pair="Oscar Piastri")[0]
+            print(result_osc)
             label_osc, prob_osc = result_osc["label"], result_osc["score"]
-            
-            print(label_osc, prob_osc)
+
             if label_osc == "Positive":
                 result_ln = sentiment_analyzer(full_text, text_pair="Lando Norris")[0]
                 label_ln, prob_ln = result_ln["label"], result_ln["score"]
@@ -148,8 +155,17 @@ def is_positive(url, sentiment_analyzer, driver):
             return 0, False, warning
 
         if driver == 'JD':
+            print(f"{title} {desc}")
+            first_check_jack = sentiment_analyzer(f"{title} {desc}", text_pair="Jack Doohan")[0]
+            print(first_check_jack)
+            if first_check_jack["label"] == "Negative" and first_check_jack["score"]>=0.6:
+                print("Saved you!")
+                return 0, False, False
+                
             result_jack = sentiment_analyzer(full_text, text_pair="Jack Doohan")[0]
+            print(result_jack)
             label_jack, prob_jack = result_jack["label"], result_jack["score"]
+            
             if label_jack == "Positive":
                 return prob_jack, True, False
             return 0, False, False
@@ -162,6 +178,8 @@ def contains_any(blob, terms):
 
 def classify_article(title, desc):
     blob = f"{title} {desc}".lower()
+    if contains_any(blob, BLACKLIST):
+        print([t for t in BLACKLIST if t and t in blob])
     return contains_any(blob, BLACKLIST)
 
 def get_article_text_with_user_agent(url):
@@ -211,6 +229,7 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         title = (getattr(entry, "title", "") or "").strip()
         link = (getattr(entry, "link", "") or "").strip()
         desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
+        desc = clean_desc(desc)
         src = get_source_name(link)
         emoji = find_source_emoji(link)
         entry_id = uid(entry)
@@ -237,11 +256,13 @@ def process_feed(url, sent, stats, sentiment_analyzer):
         print('hit: ',driver, title)
             
         if classify_article(title, desc):
+            print(title)
+            print(desc)
             stats["blacklist"] += 1
             print('blacklist')
             continue
             
-        prob, is_pos, warning = is_positive(link, sentiment_analyzer, driver)
+        prob, is_pos, warning = is_positive(link, sentiment_analyzer, driver, title, desc)
         if warning:
             stats["LN_bias"] += 1
             
